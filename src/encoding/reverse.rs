@@ -13,8 +13,8 @@ use std::ops::Add;
 ///
 /// # Returns:
 /// * Reversed text.
-fn encode<T>(text: T)-> String
-    where T: AsRef<str> {
+fn encode<T>(text: &T)-> String
+    where T: ?Sized + AsRef<str> {
     let mut reversed_text = String::new();
     for character in (text.as_ref() as &str).chars().rev(){
         reversed_text = reversed_text.add(character.to_string().as_str());
@@ -29,8 +29,8 @@ fn encode<T>(text: T)-> String
 ///
 /// # Returns:
 /// * Original text.
-fn decode<T>(text: T)-> String
-    where T: AsRef<str> {
+fn decode<T>(text: &T)-> String
+    where T: ?Sized + AsRef<str> {
     encode(text)
 }
 
