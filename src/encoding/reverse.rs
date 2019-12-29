@@ -1,10 +1,9 @@
-use std::ops::Add;
-
 /// Reverse encoding functions.
 ///
 /// Reverse encoding is the simplest of encoding methods. It just reverses order of
 /// text characters.
 
+use std::ops::Add;
 
 /// Reverse order of given text characters.
 ///
@@ -13,7 +12,7 @@ use std::ops::Add;
 ///
 /// # Returns:
 /// * Reversed text.
-fn encode<T>(text: &T)-> String
+pub fn encode<T>(text: &T)-> String
     where T: ?Sized + AsRef<str> {
     let mut reversed_text = String::new();
     for character in (text.as_ref() as &str).chars().rev(){
@@ -29,7 +28,7 @@ fn encode<T>(text: &T)-> String
 ///
 /// # Returns:
 /// * Original text.
-fn decode<T>(text: &T)-> String
+pub fn decode<T>(text: &T)-> String
     where T: ?Sized + AsRef<str> {
     encode(text)
 }
