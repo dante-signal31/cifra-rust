@@ -99,7 +99,10 @@ fn get_new_char_position<T, U>(character: T, key: usize, advance: bool, charset:
           U: AsRef<str> {
     let charset_length = charset.as_ref().len();
     let character_to_find = character.as_ref().chars().nth(0)?;
-    let char_position = charset.as_ref().find(|c| c == character_to_find)?;
+    let char_position = match charset.as_ref().find(character_to_find) {
+            Some(index) => index,
+            _ => return None
+        };
     let offset_position = if advance {
         (char_position + key) as isize
         } else {
