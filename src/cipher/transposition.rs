@@ -93,6 +93,23 @@ fn get_matrix_dimensions<T>(key: usize, text: T, ciphering: bool)-> (usize, usiz
     (total_rows, total_columns)
 }
 
+/// Create an empty transposition matrix with given dimensions.
+///
+/// # Parameters:
+/// * rows: Amount of rows created matrix needs to have.
+/// * columns: Amount of columns created matrix needs to have.
+///
+/// # Returns:
+/// * An empty transposition matrix.
+fn create_matrix(rows: usize, columns: usize) -> TranspositionMatrix {
+    let mut matrix: TranspositionMatrix = Vec::with_capacity(rows);
+    let blank_row = vec![Some(' '); columns];
+    for i in 0..rows {
+        matrix.push(blank_row.clone());
+    };
+    matrix
+}
+
 /// Store text to cipher in transposition matrix.
 ///
 /// # Parameters:
@@ -229,6 +246,18 @@ mod tests {
         let (rows, columns) = get_matrix_dimensions(TEST_KEY, CIPHERED_MESSAGE_KEY_8, false);
         assert_eq!((8, 4), (rows, columns),
                    "Recovered dimensions were not as expected for deciphering case");
+    }
+
+    #[test]
+    fn test_create_matrix() {
+        let expected_matrix = vec![
+            vec![Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' ')]];
+        let recovered_matrix = create_matrix(4, 8);
+        assert_eq!(expected_matrix, recovered_matrix,
+                   "Default created matrix is not what we were expecting.")
     }
 }
 
