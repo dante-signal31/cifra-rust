@@ -1,3 +1,5 @@
+
+
 /// Library to cipher and decipher texts using transposition method.
 
 type TranspositionMatrix = Vec<Vec<Option<char>>>;
@@ -26,7 +28,8 @@ pub fn cipher<T>(text: T, key: usize)-> String
 /// * Deciphered text.
 pub fn decipher<T>(ciphered_text: T, key: usize)-> String
     where T: AsRef<str> {
-    unimplemented!()
+    let deciphered_text = transpose_text(ciphered_text, key, false);
+    deciphered_text
 }
 
 /// Transpose given text.
@@ -61,6 +64,33 @@ fn transpose_text<T>(text: T, key: usize, ciphering: bool)-> String
 fn create_transposition_matrix<T>(key: usize, text: T, ciphering: bool) -> TranspositionMatrix
     where T: AsRef<str> {
     unimplemented!()
+}
+
+
+/// Get transposition matrix dimensions needed for given text and key.
+///
+/// # Parameters:
+/// * key: Secret key used for transposition.
+/// * text: Text to transpose.
+/// * ciphering: If true then we are populating a transposition matrix
+///      for ciphering purposes. If false then we are using this function to
+///      populate a transposition matrix from deciphering.
+/// # Returns:
+/// * A tuple with matrix dimensions with format (rows, columns).
+fn get_matrix_dimensions<T>(key: usize, text: T, ciphering: bool)-> (usize, usize)
+    where T: AsRef<str> {
+    let text_length = text.as_ref().len();
+    let total_rows = if ciphering {
+            (text_length as f64 / key as f64).ceil() as usize
+        } else {
+            key
+        };
+    let total_columns = if ciphering {
+            key
+        } else {
+            (text_length as f64 / key as f64).ceil() as usize
+        };
+    (total_rows, total_columns)
 }
 
 /// Store text to cipher in transposition matrix.
@@ -160,7 +190,45 @@ mod tests {
     
     #[test]
     fn test_populate_transposition_matrix() {
-        
+        let mut transposition_matrix = vec![
+            vec![Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), None, None]];
+        let expected_populated_transposition_matrix = vec![
+            vec![Some('C'), Some('o'), Some('m'), Some('m'), Some('o'), Some('n'), Some(' '), Some('s')],
+            vec![Some('e'), Some('n'), Some('s'), Some('e'), Some(' '), Some('i'), Some('s'), Some(' ')],
+            vec![Some('n'), Some('o'), Some('t'), Some(' '), Some('s'), Some('o'), Some(' '), Some('c')],
+            vec![Some('o'), Some('m'), Some('m'), Some('o'), Some('n'), Some('.'), None, None]];
+        let recovered_transposition_matrix = populate_transposition_matrix(TEST_KEY,
+                                                                           ORIGINAL_MESSAGE,
+                                                                           &mut transposition_matrix,
+                                                                           true);
+        assert_eq!(expected_populated_transposition_matrix, recovered_transposition_matrix,
+                   "Expected transposition matrix is not what we recovered");
+    }
+    
+    #[test]
+    fn test_get_transposed_text() {
+        let transposition_matrix = vec![
+            vec![Some('C'), Some('o'), Some('m'), Some('m'), Some('o'), Some('n'), Some(' '), Some('s')],
+            vec![Some('e'), Some('n'), Some('s'), Some('e'), Some(' '), Some('i'), Some('s'), Some(' ')],
+            vec![Some('n'), Some('o'), Some('t'), Some(' '), Some('s'), Some('o'), Some(' '), Some('c')],
+            vec![Some('o'), Some('m'), Some('m'), Some('o'), Some('n'), Some('.'), None, None]];
+        let recovered_text = get_transposed_text(&transposition_matrix);
+        assert_eq!(CIPHERED_MESSAGE_KEY_8, recovered_text,
+                   "Expected text:\n\t{}\nBut recovered text was:\n\t{}\n",
+                   CIPHERED_MESSAGE_KEY_8, recovered_text);
+    }
+
+    #[test]
+    fn test_get_matrix_dimensions() {
+        let (rows, columns) = get_matrix_dimensions(TEST_KEY, ORIGINAL_MESSAGE, true);
+        assert_eq!((4, 8), (rows, columns),
+                    "Recovered dimensions were not as expected for ciphering case");
+        let (rows, columns) = get_matrix_dimensions(TEST_KEY, CIPHERED_MESSAGE_KEY_8, false);
+        assert_eq!((8, 4), (rows, columns),
+                   "Recovered dimensions were not as expected for deciphering case");
     }
 }
 
