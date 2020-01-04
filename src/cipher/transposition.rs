@@ -110,6 +110,39 @@ fn create_matrix(rows: usize, columns: usize) -> TranspositionMatrix {
     matrix
 }
 
+/// Mark not usable cells in transposition matrix with None.
+///
+/// Usually, transposition matrix has more cells that those actually needed for
+/// text characters. Exceeding cells should be marked as None. Be aware that
+/// transposition algorithm appends exceeding cells in last row tail for
+/// ciphering matrix whereas uses last column tail for deciphering matrix.
+///
+/// # Parameters:
+/// * ciphering: If true then we are populating a transposition matrix
+///      for ciphering purposes. If false then we are using this function to
+///      populate a transposition matrix fro deciphering.
+/// * matrix: Transposition matrix to modify. This matrix is consumed by this function.
+/// * text: Text to transpose.
+///
+/// # Returns:
+/// * A new transposition matrix with remainder cells set.
+fn set_remainder_cells<T>(ciphering: bool, mut matrix: TranspositionMatrix, text: T) -> TranspositionMatrix
+    where T: AsRef<str> {
+    let text_length = text.as_ref().len();
+    let total_rows = matrix.len();
+    let total_columns = matrix[0].len();
+    let remainder = (total_columns * total_rows) - text_length;
+    for i in 0..remainder {
+        if ciphering {
+            matrix[total_rows-1][total_columns-1-i] = None;
+        } else {
+            matrix[total_rows-1-i][total_columns-1] = None;
+        }
+    }
+    matrix
+}
+
+
 /// Store text to cipher in transposition matrix.
 ///
 /// # Parameters:
@@ -258,6 +291,48 @@ mod tests {
         let recovered_matrix = create_matrix(4, 8);
         assert_eq!(expected_matrix, recovered_matrix,
                    "Default created matrix is not what we were expecting.")
+    }
+
+    #[test]
+    fn test_set_remainder_cells() {
+        let input_matrix_ciphering = vec![
+            vec![Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' ')]];
+        let expected_matrix_ciphering = vec![
+            vec![Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), Some(' '), None, None]];
+        let recovered_matrix_ciphering = set_remainder_cells(true,
+                                                             input_matrix_ciphering,
+                                                             ORIGINAL_MESSAGE);
+        assert_eq!(expected_matrix_ciphering, recovered_matrix_ciphering,
+                   "Remainder cells were not correctly set for ciphering case.");
+        let input_matrix_deciphering = vec![
+            vec![Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' ')]];
+        let expected_matrix_deciphering = vec![
+            vec![Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), Some(' ')],
+            vec![Some(' '), Some(' '), Some(' '), None],
+            vec![Some(' '), Some(' '), Some(' '), None]];
+        let recovered_matrix_deciphering = set_remainder_cells(false,
+                                                               input_matrix_deciphering,
+                                                               CIPHERED_MESSAGE_KEY_8);
+        assert_eq!(expected_matrix_deciphering, recovered_matrix_deciphering,
+                   "Remainder cells were not correctly set for deciphering case.");
     }
 }
 
