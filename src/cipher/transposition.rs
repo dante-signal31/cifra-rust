@@ -45,7 +45,10 @@ pub fn decipher<T>(ciphered_text: T, key: usize)-> String
 fn transpose_text<T>(text: T, key: usize, ciphering: bool)-> String
     where T: AsRef<str> {
     let mut matrix = create_transposition_matrix(key, &text, ciphering);
-    let populated_matrix = populate_transposition_matrix(key, &text, &mut matrix, ciphering);
+    let populated_matrix = populate_transposition_matrix(key,
+                                                         &text,
+                                                         matrix,
+                                                         ciphering);
     let recovered_text = get_transposed_text(&populated_matrix);
     recovered_text
 }
@@ -159,10 +162,45 @@ fn set_remainder_cells<T>(ciphering: bool, mut matrix: TranspositionMatrix, text
 /// # Returns:
 /// * transposition_matrix with text to cipher stored inside it.
 fn populate_transposition_matrix<T>(key: usize, text: T,
-                                    transposition_matrix: &mut TranspositionMatrix,
+                                    mut transposition_matrix: TranspositionMatrix,
                                     ciphering: bool) -> TranspositionMatrix
     where T: AsRef<str> {
-    unimplemented!()
+    let total_columns = if ciphering {
+            key
+        } else {
+            (text.as_ref().len() as f64 / key as f64).ceil() as usize
+        };
+    let mut offset: usize = 0;
+    for (index, char) in text.as_ref().chars().enumerate() {
+        let (row, column) = calculate_position(index+offset, total_columns);
+        if transposition_matrix[row][column] == None {
+            // Actually we only get here on deciphering cases. When ciphering you
+            // exhaust text characters before touching None cells, but when
+            // deciphering you get can touch those cells when still distributing
+            // chars through matrix. When you come across a cell marked as None
+            // You should get over it and use next available cell (not marked
+            // as None).
+            offset += 1;
+            let (row, column) = calculate_position(index+offset, total_columns);
+        }
+        transposition_matrix[row][column] = Some(char);
+    }
+    transposition_matrix
+}
+
+
+/// Get matrix coordinates of a given index, based on columns table.
+///
+/// # Parameters:
+/// * index: Searched index.
+/// * total_columns: How many columns per row this matrix has.
+///
+/// # Returns:
+/// * (row, column) for given index.
+fn calculate_position(index: usize, total_columns: usize) -> (usize, usize) {
+    let row = (index as f64 / total_columns as f64).floor() as usize;
+    let column = index % total_columns;
+    (row, column)
 }
 
 /// Get transposed characters from populated transposition matrix.
@@ -255,7 +293,7 @@ mod tests {
             vec![Some('o'), Some('m'), Some('m'), Some('o'), Some('n'), Some('.'), None, None]];
         let recovered_transposition_matrix = populate_transposition_matrix(TEST_KEY,
                                                                            ORIGINAL_MESSAGE,
-                                                                           &mut transposition_matrix,
+                                                                           transposition_matrix,
                                                                            true);
         assert_eq!(expected_populated_transposition_matrix, recovered_transposition_matrix,
                    "Expected transposition matrix is not what we recovered");
@@ -336,6 +374,14 @@ mod tests {
                                                                CIPHERED_MESSAGE_KEY_8);
         assert_eq!(expected_matrix_deciphering, recovered_matrix_deciphering,
                    "Remainder cells were not correctly set for deciphering case.");
+    }
+
+    #[test]
+    fn test_calculated_position() {
+        let expected_position = (1,2);
+        let recovered_position = calculate_position(10, 8);
+        assert_eq!(expected_position, recovered_position,
+                   "Recovered position was not what we were expecting.")
     }
 }
 
