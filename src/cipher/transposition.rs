@@ -172,7 +172,7 @@ fn populate_transposition_matrix<T>(key: usize, text: T,
         };
     let mut offset: usize = 0;
     for (index, char) in text.as_ref().chars().enumerate() {
-        let (row, column) = calculate_position(index+offset, total_columns);
+        let (mut row, mut column) = calculate_position(index+offset, total_columns);
         if transposition_matrix[row][column] == None {
             // Actually we only get here on deciphering cases. When ciphering you
             // exhaust text characters before touching None cells, but when
@@ -181,7 +181,14 @@ fn populate_transposition_matrix<T>(key: usize, text: T,
             // You should get over it and use next available cell (not marked
             // as None).
             offset += 1;
-            let (row, column) = calculate_position(index+offset, total_columns);
+            // It's a pity but I cannot reuse row and column to get directly calculate_position()
+            // return. If I do it with let I only recreate a local scope pair of variables that get
+            // lost when we leave "if" scope. And I get an error if I don't use "let". So, my
+            // only and dirty option is taking calculate_position() return in two auxiliary
+            // variables and assign to outer variables just afterwards.
+            let (_row, _column) = calculate_position(index+offset, total_columns);
+            row = _row;
+            column = _column;
         }
         transposition_matrix[row][column] = Some(char);
     }
