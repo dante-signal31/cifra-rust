@@ -212,7 +212,16 @@ fn calculate_position(index: usize, total_columns: usize) -> (usize, usize) {
 /// # Returns:
 /// * Text cohered by transposition method.
 fn get_transposed_text(populated_transposition_matrix: &TranspositionMatrix) -> String {
-    unimplemented!()
+    let total_columns = populated_transposition_matrix[0].len();
+    let mut transposed_text = String::new();
+    for i in 0..total_columns {
+        for row in populated_transposition_matrix {
+            if let Some(char) = row[i]{
+                transposed_text.push(char);
+            }
+        }
+    }
+    transposed_text
 }
 
 
