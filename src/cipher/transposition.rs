@@ -14,7 +14,7 @@ type TranspositionMatrix = Vec<Vec<Option<char>>>;
 /// * Ciphered text.
 pub fn cipher<T>(text: T, key: usize)-> String
     where T: AsRef<str> {
-    let ciphered_text = transpose_text(text, key, true);
+    let ciphered_text = transpose_text(&text, key, true);
     ciphered_text
 }
 
@@ -28,7 +28,7 @@ pub fn cipher<T>(text: T, key: usize)-> String
 /// * Deciphered text.
 pub fn decipher<T>(ciphered_text: T, key: usize)-> String
     where T: AsRef<str> {
-    let deciphered_text = transpose_text(ciphered_text, key, false);
+    let deciphered_text = transpose_text(&ciphered_text, key, false);
     deciphered_text
 }
 
@@ -63,7 +63,10 @@ fn transpose_text<T>(text: T, key: usize, ciphering: bool)-> String
 /// * Transposition matrix in its default state.
 fn create_transposition_matrix<T>(key: usize, text: T, ciphering: bool) -> TranspositionMatrix
     where T: AsRef<str> {
-    unimplemented!()
+    let (total_rows, total_columns) = get_matrix_dimensions(key, &text, ciphering);
+    let mut matrix = create_matrix(total_rows, total_columns);
+    matrix = set_remainder_cells(ciphering, matrix, &text);
+    matrix
 }
 
 
