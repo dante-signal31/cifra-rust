@@ -1,5 +1,7 @@
-pub mod encoding;
+pub mod attack;
 pub mod cipher;
+pub mod encoding;
+
 
 
 #[cfg(test)]
