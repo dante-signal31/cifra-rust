@@ -33,7 +33,8 @@ fn check_database_url_env_var_exists()-> Result<(), VarError>{
 
 /// Create ans populate database wit its default tables.
 pub fn create_database(){
-    unimplemented!()
+    let connection = establish_connection();
+    embedded_migrations::run(&connection);
 }
 
 
