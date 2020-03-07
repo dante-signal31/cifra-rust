@@ -67,7 +67,7 @@ fn offset_text<T, U>(text: T, key: usize, advance: bool, charset: U)-> String
     let mut offset_text = String::new();
     for character in text.as_ref().chars() {
         let normalized_char = character.to_lowercase().to_string();
-        let mut new_character = match get_new_char_position(&normalized_char, key, advance, &charset) {
+        let new_character = match get_new_char_position(&normalized_char, key, advance, &charset) {
                 Some(new_char_position) => charset.as_ref().chars().nth(new_char_position).unwrap(),
                 _ => character.clone()
             };

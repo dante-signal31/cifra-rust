@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 diesel = {version = "1.4.3", features = ["sqlite"]}
 diesel_migrations = "1.4.0"
+dotenv = "0.15.0"
 
 [dev-dependencies]
-dotenv = "0.15.0"
+test_common = "1.1.0"

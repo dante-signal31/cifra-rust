@@ -44,7 +44,7 @@ pub fn decipher<T>(ciphered_text: T, key: usize)-> String
 /// * Transposed text.
 fn transpose_text<T>(text: T, key: usize, ciphering: bool)-> String
     where T: AsRef<str> {
-    let mut matrix = create_transposition_matrix(key, &text, ciphering);
+    let matrix = create_transposition_matrix(key, &text, ciphering);
     let populated_matrix = populate_transposition_matrix(key,
                                                          &text,
                                                          matrix,
@@ -110,7 +110,7 @@ fn get_matrix_dimensions<T>(key: usize, text: T, ciphering: bool)-> (usize, usiz
 fn create_matrix(rows: usize, columns: usize) -> TranspositionMatrix {
     let mut matrix: TranspositionMatrix = Vec::with_capacity(rows);
     let blank_row = vec![Some(' '); columns];
-    for i in 0..rows {
+    for _i in 0..rows {
         matrix.push(blank_row.clone());
     };
     matrix

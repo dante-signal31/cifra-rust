@@ -5,9 +5,6 @@ use dotenv::dotenv;
 use std::env;
 use std::env::VarError;
 
-#[macro_use]
-extern crate diesel_migrations;
-
 embed_migrations!();
 
 
@@ -26,13 +23,19 @@ const DATABASE_STANDARD_PATH: &'static str = "~/.cifra/cifra_database.sqlite";
 /// Ok(()) is DEFAULT_URL exists and a VarError if not.
 fn check_database_url_env_var_exists()-> Result<(), VarError>{
     return match env::var(DATABASE_ENV_VAR) {
-        Ok(var_value) => Ok(()),
+        Ok(_var_value) => Ok(()),
         Err(e) => {
             env::set_var(DATABASE_ENV_VAR, DATABASE_STANDARD_PATH);
             Err(e)
         }
     };
 }
+
+/// Create ans populate database wit its default tables.
+pub fn create_database(){
+    unimplemented!()
+}
+
 
 /// Connect to current dictionaries database.
 ///
@@ -46,3 +49,29 @@ pub fn establish_connection()-> SqliteConnection {
         .expect(&format!("Error connecting to {}", database_url))
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ffi::OsStr;
+    use std::path::Path;
+    use test_common::fs::tmp::TestEnvironment;
+    use test_common::system::env::TemporalEnvironmentVariable;
+
+    #[test]
+    fn test_create_database() {
+        let test_folder = TestEnvironment::new();
+        let absolute_path_to_database = test_folder.path().join("cifra_database.sqlite");
+        let absolute_pathname_to_database = match absolute_path_to_database.to_str() {
+            Some(path)=> path,
+            None=> panic!("Path uses non valid characters.")
+        };
+        // Database does not exists yet.
+        assert!(!Path::new(absolute_pathname_to_database).exists());
+        let test_env = TemporalEnvironmentVariable::new("DATABASE_URL", absolute_pathname_to_database);
+        create_database();
+        // Database now exists.
+        assert!(Path::new(absolute_pathname_to_database).exists());
+    }
+
+
+}
