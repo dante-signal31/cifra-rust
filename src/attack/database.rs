@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 embed_migrations!();
 
+pub type DatabaseSession = SqliteConnection;
 
 const DATABASE_ENV_VAR: &'static str = "DATABASE_URL";
 const DATABASE_STANDARD_PATH: &'static str = "~/.cifra/cifra_database.sqlite";
@@ -39,7 +40,7 @@ pub fn create_database(){
 }
 
 pub struct Database {
-    session: SqliteConnection
+    pub session: DatabaseSession
 }
 
 impl Database {
@@ -54,7 +55,7 @@ impl Database {
     ///
     /// Returns:
     /// A connection to underlying database.
-    fn open_session() -> SqliteConnection {
+    fn open_session() -> DatabaseSession {
         dotenv().ok();
         let database_url = env::var("DATABASE_URL")
             .expect("DATABASE_URL must be set");
