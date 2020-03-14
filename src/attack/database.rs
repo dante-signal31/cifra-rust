@@ -4,6 +4,7 @@ use diesel::sqlite::SqliteConnection;
 use dotenv::dotenv;
 use std::env;
 use std::env::VarError;
+use std::path::PathBuf;
 
 embed_migrations!();
 
@@ -31,24 +32,37 @@ fn check_database_url_env_var_exists()-> Result<(), VarError>{
     };
 }
 
-/// Create ans populate database wit its default tables.
+/// Create and populate database wit its default tables.
 pub fn create_database(){
-    let connection = establish_connection();
-    embedded_migrations::run(&connection);
+    let database = Database::new();
+    embedded_migrations::run(&database.session);
 }
 
-
-/// Connect to current dictionaries database.
-///
-/// Returns:
-/// A connection to underlying database.
-pub fn establish_connection()-> SqliteConnection {
-    dotenv().ok();
-    let database_url = env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set");
-    SqliteConnection::establish(&database_url)
-        .expect(&format!("Error connecting to {}", database_url))
+pub struct Database {
+    session: SqliteConnection
 }
+
+impl Database {
+
+    pub fn new() -> Self {
+        Database {
+           session: Self::open_session()
+        }
+    }
+
+    /// Connect to current dictionaries database.
+    ///
+    /// Returns:
+    /// A connection to underlying database.
+    fn open_session() -> SqliteConnection {
+        dotenv().ok();
+        let database_url = env::var("DATABASE_URL")
+            .expect("DATABASE_URL must be set");
+        SqliteConnection::establish(&database_url)
+            .expect(&format!("Error connecting to {}", database_url))
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
