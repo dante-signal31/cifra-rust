@@ -1,6 +1,9 @@
 use crate::attack::database::{Database, DatabaseSession};
 use std::collections::{HashSet, HashMap};
 use std::path::PathBuf;
+use std::error::{Error, fmt};
+use std::fmt;
+use std::fmt::{Display, Formatter};
 
 /// Module to deal with words dictionaries.
 ///
@@ -20,7 +23,7 @@ impl Dictionary {
     ///
     /// # Parameters:
     /// * language: Language to remove from database.
-    fn remove_dictionary<T>(language: T)
+    pub fn remove_dictionary<T>(language: T)
         where T: AsRef<str> {
         unimplemented!();
     }
@@ -29,11 +32,11 @@ impl Dictionary {
     ///
     /// # Returns:
     /// * A list with names of dictionaries present at database.
-    fn get_dictionaries_names()-> Vec<String> {
+    pub fn get_dictionaries_names()-> Vec<String> {
         unimplemented!();
     }
 
-    fn new<T>(language: T)-> Self
+    pub fn new<T>(language: T)-> Self
         where T: AsRef<str> {
         Dictionary {
             language: String::from(language),
@@ -42,7 +45,7 @@ impl Dictionary {
     }
 
     /// Get open session for current dictionary database.
-    fn session(&self) -> &DatabaseSession {
+    pub fn session(&self) -> &DatabaseSession {
         &self.database.session
     }
 
@@ -52,7 +55,7 @@ impl Dictionary {
     ///
     /// # Parameters:
     /// * word: word to add to dictionary.
-    fn add_word<T>(&mut self, word: T)
+    pub fn add_word<T>(&mut self, word: T)
         where T: AsRef<str> {
         unimplemented!()
     }
@@ -61,7 +64,7 @@ impl Dictionary {
     ///
     /// # Parameters:
     /// * words: Set of words to add to dictionary.
-    fn add_multiple_words(&mut self, words: HashSet<String>){
+    pub fn add_multiple_words(&mut self, words: HashSet<String>){
         unimplemented!()
     }
 
@@ -71,7 +74,7 @@ impl Dictionary {
     ///
     /// # Parameters:
     /// * word: word to remove from dictionary.
-    fn remove_word<T>(&mut self, word: T)
+    pub fn remove_word<T>(&mut self, word: T)
         where T: AsRef<str> {
         unimplemented!()
     }
@@ -83,7 +86,7 @@ impl Dictionary {
     ///
     /// # Returns:
     /// True if word is already present at dictionary, False otherwise.
-    fn word_exists<T>(&self, word: T) -> bool
+    pub fn word_exists<T>(&self, word: T) -> bool
         where T: AsRef<str> {
         unimplemented!()
     }
@@ -92,7 +95,7 @@ impl Dictionary {
     ///
     /// # Parameters:
     /// * file_pathname: Absolute path to file with text to analyze.
-    fn populate<T>(&mut self, file_pathname: T)
+    pub fn populate<T>(&mut self, file_pathname: T)
         where T: AsRef<PathBuf> {
         unimplemented!()
     }
@@ -118,7 +121,7 @@ impl Dictionary {
 ///
 /// # Returns:
 /// A set of words normalized to lowercase and without any punctuation mark.
-fn get_words_from_text_file<T>(file_pathname: T) -> HashSet<String>
+pub fn get_words_from_text_file<T>(file_pathname: T) -> HashSet<String>
     where T: AsRef<PathBuf> {
     unimplemented!()
 }
@@ -129,7 +132,7 @@ fn get_words_from_text_file<T>(file_pathname: T) -> HashSet<String>
 /// * winner: Name of language more likely. If None the no proper language was found.
 /// * winner_probability: Probability this language is actually de right one. If None the no proper language was found.
 /// * candidates: Dict with all languages probabilities. Probabilities are floats from 0 to 1.
-struct IdentifiedLanguage {
+pub struct IdentifiedLanguage {
     winner: Option<String>,
     winner_probability: Option<String>,
     candidates: HashMap<String, String>
@@ -145,7 +148,51 @@ struct IdentifiedLanguage {
 ///
 /// # Returns:
 /// * Language selected as more likely to be the one used to write text.
-fn identify_language<T>(text: T)-> IdentifiedLanguage
+pub fn identify_language<T>(text: T)-> IdentifiedLanguage
     where T: AsRef<str> {
     unimplemented!()
+}
+
+/// Get frequency of presence of words in each language.
+///
+/// # Parameters:
+/// * words: Text words.
+///
+/// # Returns:
+/// * Dict with all languages probabilities. Probabilities are floats
+///    from 0 to 1. The higher the frequency of presence of words in language
+///    the higher of this probability.
+fn get_candidates_frecuency(words: HashSet<String>)-> HashMap<String, f64> {
+    unimplemented!()
+}
+
+/// Return candidate with highest frequency.
+///
+/// # Parameters:
+/// * candidates: Dict with all languages probabilities. Probabilities are floats
+///    from 0 to 1. The higher the frequency of presence of words in language
+///    the higher of this probability
+fn get_winner(candidates: HashMap<String, f64>)-> String {
+    unimplemented!()
+}
+
+/// Error to alarm when you try to work with a Language that has not been created yet.
+#[derive(Debug)]
+struct NotExistingLanguage {
+    language_tried: String
+}
+
+impl NotExistingLanguage {
+    pub fn new<T>(language_tried: T)-> Self
+        where T: AsRef<str> {
+        NotExistingLanguage{language_tried}
+    }
+}
+
+impl Error for NotExistingLanguage {}
+
+impl Display for NotExistingLanguage {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "Does not exist any dictionary for {} language", self.language_tried)
+    }
 }
