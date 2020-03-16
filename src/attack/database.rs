@@ -10,7 +10,7 @@ embed_migrations!();
 
 pub type DatabaseSession = SqliteConnection;
 
-const DATABASE_ENV_VAR: &'static str = "DATABASE_URL";
+pub const DATABASE_ENV_VAR: &'static str = "DATABASE_URL";
 const DATABASE_STANDARD_PATH: &'static str = "~/.cifra/cifra_database.sqlite";
 
 /// Check if DATABASE_URL environment variable actually exists and create it if not.
@@ -33,10 +33,11 @@ fn check_database_url_env_var_exists()-> Result<(), VarError>{
     };
 }
 
-/// Create and populate database wit its default tables.
-pub fn create_database(){
+/// Create and populate database with its default tables.
+pub fn create_database()-> Database{
     let database = Database::new();
     embedded_migrations::run(&database.session);
+    database
 }
 
 pub struct Database {
@@ -46,6 +47,7 @@ pub struct Database {
 impl Database {
 
     pub fn new() -> Self {
+        check_database_url_env_var_exists();
         Database {
            session: Self::open_session()
         }

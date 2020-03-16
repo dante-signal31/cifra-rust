@@ -11,6 +11,11 @@ use std::fmt::{Display, Formatter};
 
 /// Cifra stores word dictionaries in a local database. This class
 /// is a wrapper to not to deal directly with that database.
+///
+/// This class is intended to be used as a context manager so you don't have
+/// to deal with opening and closing this dictionary. So, call this method
+/// as a context manager, it will return this instance so you can call
+/// further methods to manage its words.
 pub struct Dictionary {
     pub language: String,
     database: Database
@@ -36,12 +41,18 @@ impl Dictionary {
         unimplemented!();
     }
 
-    pub fn new<T>(language: T)-> Self
+    /// # Parameters:
+    /// * language: Language you want to manage its words.
+    /// * create: Whether this language should be created in database if not present yet.
+    ///    It defaults to False. If it is set to False and language is not already present at
+    ///    database then a dictionaries.NotExistingLanguage exception is raised, but if it is
+    ///    set to True then language is registered in database as a new language.
+    pub fn new<T>(language: T, create: bool)-> Result<Self, NotExistingLanguage>
         where T: AsRef<str> {
-        Dictionary {
+        Ok(Dictionary {
             language: String::from(language),
             database
-        }
+            })
     }
 
     /// Get open session for current dictionary database.
@@ -194,5 +205,291 @@ impl Error for NotExistingLanguage {}
 impl Display for NotExistingLanguage {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "Does not exist any dictionary for {} language", self.language_tried)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use PathBuf;
+    use std::fs::{create_dir, File, OpenOptions};
+    use test_common::fs::ops::{copy_files};
+    use test_common::fs::tmp::TestEnvironment;
+    use test_common::system::env::TemporalEnvironmentVariable;
+    use test::TestEvent::TeFiltered;
+    use std::ffi::OsString;
+    use std::path::Path;
+    use std::io::Write;
+    use crate::attack::database;
+    use std::env::temp_dir;
+    use test::assert_test_result;
+
+
+    const TEXT_FILE_NAME: &'static str = "text_to_load.txt";
+    const ENGLISH_TEXT_WITHOUT_PUNCTUATIONS_MARKS: &'static str = "his eBook is for the use of anyone anywhere at no cost and with
+almost no restrictions whatsoever You may copy it give it away or
+re use it under the terms of the Project Gutenberg License included
+with this eBook or online at";
+    const ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS: &'static str = "This eBook is for the use of anyone anywhere at no cost and with
+almost no restrictions whatsoever.You may copy it, give it away or
+re-use it under the terms of the Project Gutenberg License included
+with this eBook or online at 2020";
+    const SPANISH_TEXT_WITHOUT_PUNCTUATIONS_MARKS: &'static str = "Todavía lo recuerdo como si aquello hubiera sucedido ayer llegó á las
+puertas de la posada estudiando su aspecto afanosa y atentamente
+seguido por su maleta que alguien conducía tras él en una carretilla de
+mano Era un hombre alto fuerte pesado con un moreno pronunciado
+color de avellana Su trenza ó coleta alquitranada le caía sobre los
+hombros de su nada limpia blusa marina Sus manos callosas destrozadas
+y llenas de cicatrices enseñaban las extremidades de unas uñas rotas y
+negruzcas Y su rostro moreno llevaba en una mejilla aquella gran
+cicatriz de sable sucia y de un color blanquizco lívido y repugnante
+Todavía lo recuerdo paseando su mirada investigadora en torno del
+cobertizo silbando mientras examinaba y prorrumpiendo en seguida en
+aquella antigua canción marina que tan á menudo le oí cantar después";
+    const SPANISH_TEXT_WITH_PUNCTUATIONS_MARKS: &'static str = "Todavía lo recuerdo como si aquello hubiera sucedido ayer: llegó á las
+puertas de la posada estudiando su aspecto, afanosa y atentamente,
+seguido por su maleta que alguien conducía tras él en una carretilla de
+mano. Era un hombre alto, fuerte, pesado, con un moreno pronunciado,
+color de avellana. Su trenza ó coleta alquitranada le caía sobre los
+hombros de su nada limpia blusa marina. Sus manos callosas, destrozadas
+y llenas de cicatrices enseñaban las extremidades de unas uñas rotas y
+negruzcas. Y su rostro moreno llevaba en una mejilla aquella gran
+cicatriz de sable, sucia y de un color blanquizco, lívido y repugnante.
+Todavía lo recuerdo, paseando su mirada investigadora en torno del
+cobertizo, silbando mientras examinaba y prorrumpiendo, en seguida, en
+aquella antigua canción marina que tan á menudo le oí cantar después:";
+    const FRENCH_TEXT_WITHOUT_PUNCTUATIONS_MARKS: &'static str = "Combien le lecteur tandis que commodément assis au coin de son feu
+il s amuse à feuilleter les pages d un roman combien il se rend peu
+compte des fatigues et des angoisses de l auteur Combien il néglige de
+se représenter les longues nuits de luttes contre des phrases rétives
+les séances de recherches dans les bibliothèques les correspondances
+avec d érudits et illisibles professeurs allemands en un mot tout
+l énorme échafaudage que l auteur a édifié et puis démoli simplement
+pour lui procurer à lui lecteur quelques instants de distraction au
+coin de son feu ou encore pour lui tempérer l ennui d une heure en
+wagon";
+    const FRENCH_TEXT_WITH_PUNCTUATIONS_MARKS: &'static str = "Combien le lecteur,--tandis que, commodément assis au coin de son feu,
+il s'amuse à feuilleter les pages d'un roman,--combien il se rend peu
+compte des fatigues et des angoisses de l'auteur! Combien il néglige de
+se représenter les longues nuits de luttes contre des phrases rétives,
+les séances de recherches dans les bibliothèques, les correspondances
+avec d'érudits et illisibles professeurs allemands, en un mot tout
+l'énorme échafaudage que l'auteur a édifié et puis démoli, simplement
+pour lui procurer, à lui, lecteur, quelques instants de distraction au
+coin de son feu, ou encore pour lui tempérer l'ennui d'une heure en
+wagon!";
+    const GERMAN_TEXT_WITHOUT_PUNCTUATIONS_MARKS: &'static str = "Da unser Gutsherr Mr Trelawney Dr Livesay und die übrigen Herren
+mich baten alle Einzelheiten über die Schatzinsel von Anfang bis zu
+Ende aufzuschreiben und nichts auszulassen als die Lage der Insel und
+auch die nur weil noch ungehobene Schätze dort liegen nehme ich im
+Jahre die Feder zur Hand und beginne bei der Zeit als mein Vater
+noch den Gasthof Zum Admiral Benbow hielt und jener dunkle alte
+Seemann mit dem Säbelhieb über der Wange unter unserem Dache Wohnung
+nahm";
+    const GERMAN_TEXT_WITH_PUNCTUATIONS_MARKS: &'static str = "Da unser Gutsherr, Mr. Trelawney, Dr. Livesay und die übrigen Herren
+mich baten, alle Einzelheiten über die Schatzinsel von Anfang bis zu
+Ende aufzuschreiben und nichts auszulassen als die Lage der Insel, und
+auch die nur, weil noch ungehobene Schätze dort liegen, nehme ich im
+Jahre 17.. die Feder zur Hand und beginne bei der Zeit, als mein Vater
+noch den Gasthof „Zum Admiral Benbow“ hielt und jener dunkle, alte
+Seemann mit dem Säbelhieb über der Wange unter unserem Dache Wohnung
+nahm.";
+
+    const TEXT_PAIRS: Vec<(&'static str, &'static str, &'static str)> = vec![
+        ("english", ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS, ENGLISH_TEXT_WITHOUT_PUNCTUATIONS_MARKS),
+        ("spanish", SPANISH_TEXT_WITH_PUNCTUATIONS_MARKS, SPANISH_TEXT_WITHOUT_PUNCTUATIONS_MARKS),
+        ("french", FRENCH_TEXT_WITH_PUNCTUATIONS_MARKS, FRENCH_TEXT_WITHOUT_PUNCTUATIONS_MARKS),
+        ("german", GERMAN_TEXT_WITH_PUNCTUATIONS_MARKS, GERMAN_TEXT_WITHOUT_PUNCTUATIONS_MARKS)];
+
+    const LANGUAGES: Vec<&str> = vec!["english", "spanish", "french", "german"];
+
+    /// Class with info to use a temporary dictionaries database.
+    struct LoadedDictionaries {
+        pub temp_dir: PathBuf,
+        pub languages: Vec<String>,
+        temp_env: TestEnvironment
+    }
+
+    impl LoadedDictionaries {
+        pub fn new()-> Self {
+            let temp_env = TestEnvironment::new();
+            let temp_dir = temp_env.path().to_owned();
+            let mut resources_path = temp_dir.clone();
+            resources_path.push("resources");
+            create_dir(&resources_path);
+            copy_files(LANGUAGES.iter()
+                .map(|x| format!("cifra-rust/tests/resources/{}_book.txt", x))
+                .collect(),
+                       resources_path.as_ref())
+                .expect("Error copying books to temporal folder.");
+            for language in LANGUAGES {
+                let mut dictionary = Dictionary::new(language, true);
+                let mut language_book = resources_path.clone();
+                language_book.push(format!("{}_book.txt", language));
+                dictionary.populate(language_book);
+            }
+            let mut languages = Vec::new();
+            LANGUAGES.iter().map(|x| languages.push(x.to_string())).collect();
+            LoadedDictionaries{
+                temp_dir,
+                languages,
+                temp_env
+            }
+        }
+    }
+
+    /// Get a HashMap with languages as keys and a list of words for every language.
+    fn get_micro_dictionaries() -> HashMap<&str, Vec<String>>{
+        let mut micro_dictionaries: HashMap<&str, Vec<String>> = HashMap::new();
+        micro_dictionaries.insert("english", vec!("yes".to_string(), "no", "dog", "cat"));
+        micro_dictionaries.insert("spanish", vec!("si".to_string(), "no", "perro", "gato"));
+        micro_dictionaries.insert("french", vec!("qui".to_string(), "non", "chien", "chat"));
+        micro_dictionaries.insert("german", vec!("ja".to_string(), "nein", "hund", "katze"));
+        micro_dictionaries
+    }
+
+    /// Create a dictionary at a temp dir filled with only a handful of words.
+    ///
+    /// # Returns:
+    /// Yields created temp_dir to host temporal dictionary database.
+    fn loaded_dictionary_temp_dir()-> TestEnvironment {
+        let micro_dictionaries= get_micro_dictionaries();
+        let temp_env = TestEnvironment::new();
+        for (language, words) in &micro_dictionaries {
+            let mut language_dictionary = Dictionary::new(language, true);
+            words.iter().map(|&word| language_dictionary.add_word(word)).collect();
+        }
+        for (language, words) in micro_dictionaries {
+            let language_dictionary = Dictionary::new(language, false);
+            assert!(words.iter().all(|&word| language_dictionary.word_exists(word)).collect());
+        }
+        temp_env
+    }
+
+    struct TemporaryTextFile {
+        pub text_file: File,
+        pub normalized_text: String,
+        pub language_name: String,
+        pub temp_filename: PathBuf
+    }
+
+    impl TemporaryTextFile {
+        pub fn new<T, U>(temp_dir: T, text: U, normalized_text: U, language_name: U)-> Self
+            where T: AsRef<Path>,
+                  U: AsRed<str> {
+            let mut temporary_text_file_pathname = PathBuf::from(temp_dir.as_ref().as_os_str());
+            temporary_text_file_pathname.push(TEXT_FILE_NAME);
+            let mut text_file = OpenOptions::new()
+                                            .write(true)
+                                            .create(true)
+                                            .open(&temporary_text_file_pathname)
+                .expect("Error opening temporary text file for writing into it.");
+            text_file.write_all(text);
+            TemporaryTextFile {
+                text_file,
+                normalized_text,
+                language_name,
+                temp_filename: temporary_text_file_pathname
+            }
+        }
+    }
+
+    /// Creates a temporary folder and set that folder at database home.
+    ///
+    /// # Returns:
+    /// You may not use then, but keep them in scope or temp folder will be removed
+    /// and environment var to find database will be restored to its default value.
+    fn temporary_database_folder(temp_dir: Option<TestEnvironment>)-> (TestEnvironment, TemporalEnvironmentVariable){
+        let temp_dir = match temp_dir {
+            None => TestEnvironment::new(),
+            Some(test_env) => test_env
+        };
+        let mut temp_database_path = PathBuf::from(temp_dir.path());
+        temp_database_path.push("cifra_database.sqlite");
+        let temp_env_database_path = TemporalEnvironmentVariable::new(database::DATABASE_ENV_VAR, temp_database_path.as_os_str());
+        (temp_dir, temp_env_database_path)
+    }
+
+    #[test]
+    fn test_open_not_existing_dictionary() {
+        let temp_dir = TestEnvironment::new();
+        match Dictionary::new("english", false) {
+            Ok(_)=> assert!(false),
+            Err(_)=> assert!(true)
+        }
+    }
+
+    #[test]
+    fn test_open_existing_dictionary() {
+        let (temp_dir, temp_env_database_path) = temporary_database_folder(None);
+        // Create not existing language.
+        {
+            Dictionary::new("english", true);
+        }
+        // Open newly created language.
+        {
+            let english_dictionary = Dictionary::new("english", false)
+                .expect("Error opening dictionary.");
+            assert!(english_dictionary.already_created());
+        }
+    }
+
+    #[test]
+    /// Test if we can check for word existence, write a new word and finally delete it.
+    fn test_cwd_word() {
+        let (temp_dir, temp_env_database_path) = temporary_database_folder(None);
+        let word = "test";
+        let mut english_dictionary = Dictionary::new("english", true)
+            .expect("Error opening dictionary");
+        assert!(!english_dictionary.word_exists(word));
+        english_dictionary.add_word(word);
+        assert!(english_dictionary.word_exists(word));
+        english_dictionary.remove_word(word);
+        assert!(!english_dictionary.word_exists(word));
+    }
+
+    #[test]
+    /// Test a new language creation at database.
+    fn test_create_language() {
+        let (temp_dir, temp_env_database_path) = temporary_database_folder(None);
+        let mut english_dictionary = Dictionary {
+            language: "english".to_string(),
+            database: database::create_database()
+        };
+        assert!(!english_dictionary.already_created());
+        english_dictionary.create_dictionary();
+        assert!(english_dictionary.already_created());
+    }
+
+    #[test]
+    /// Test delete a language also removes its words.
+    fn test_delete_language() {
+        let micro_dictionaries = get_micro_dictionaries()
+        let loaded_dictionary = loaded_dictionary_temp_dir();
+        let (temp_dir, temp_env_database_path) = temporary_database_folder(Some(loaded_dictionary));
+        let language_to_remove = "german";
+        Dictionary::remove_dictionary(language_to_remove);
+        // Check all words from removed language have been removed too.
+        let not_existing_dictionary = Dictionary {
+            language: language_to_remove.to_string(),
+            database: database::create_database()
+        };
+        assert!(micro_dictionaries.get(language_to_remove).iter()
+            .all(|word| !not_existing_dictionary.word_exists(word)));
+    }
+
+    #[test]
+    fn test_get_words_from_text_file() {
+        let temp_dir = TestEnvironment::new();
+        for (language_name, text_with_puntuation_marks, text_without_punctuation_marks) in TEXT_PAIRS {
+            let temporary_text = TemporaryTextFile::new(&temp_dir,
+                                                        text_with_puntuation_marks,
+                                                        text_without_punctuation_marks,
+                                                        language_name);
+            let mut expected_set = HashSet::new();
+            temporary_text.normalized_text.split_ascii_whitespace().map(|word| expected_set.insert(word)).collect();
+            let returned_set = get_words_from_text_file(temporary_text.temp_filename);
+            assert!(expected_set.eq(&returned_set);)
+        }
     }
 }
