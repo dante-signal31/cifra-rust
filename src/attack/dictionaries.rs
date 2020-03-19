@@ -137,6 +137,21 @@ pub fn get_words_from_text_file<T>(file_pathname: T) -> HashSet<String>
     unimplemented!()
 }
 
+/// Extract words from given text.
+///
+/// Extracted words are normalized to lowercase and any punctuation mark
+/// adjacent to words are removed.
+///
+/// # Parameters:
+/// * text: Text to extract words from.
+///
+/// # Returns:
+/// A set of words normalized to lowercase and without any punctuation mark.
+pub fn get_words_from_text<T>(text: T)-> HashSet<String>
+    where T: AsRef<str> {
+    unimplemented!()
+}
+
 /// Language selected as more likely to be the one the message is written into.
 ///
 /// # Members:
@@ -219,7 +234,7 @@ mod tests {
     use test::TestEvent::TeFiltered;
     use std::ffi::OsString;
     use std::path::Path;
-    use std::io::Write;
+    use std::io::{Write, BufReader, Read};
     use crate::attack::database;
     use std::env::temp_dir;
     use test::assert_test_result;
@@ -295,7 +310,7 @@ noch den Gasthof „Zum Admiral Benbow“ hielt und jener dunkle, alte
 Seemann mit dem Säbelhieb über der Wange unter unserem Dache Wohnung
 nahm.";
 
-    const TEXT_PAIRS: Vec<(&'static str, &'static str, &'static str)> = vec![
+    const TEXT_TUPLES: Vec<(&'static str, &'static str, &'static str)> = vec![
         ("english", ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS, ENGLISH_TEXT_WITHOUT_PUNCTUATIONS_MARKS),
         ("spanish", SPANISH_TEXT_WITH_PUNCTUATIONS_MARKS, SPANISH_TEXT_WITHOUT_PUNCTUATIONS_MARKS),
         ("french", FRENCH_TEXT_WITH_PUNCTUATIONS_MARKS, FRENCH_TEXT_WITHOUT_PUNCTUATIONS_MARKS),
@@ -366,6 +381,10 @@ nahm.";
         temp_env
     }
 
+    /// File with denormalized text in a temporary path.
+    ///
+    /// Language name this text is written is is at its *language_name* attributte, while
+    /// its *normalized_text* has the normalized version.
     struct TemporaryTextFile {
         pub text_file: File,
         pub normalized_text: String,
@@ -481,7 +500,7 @@ nahm.";
     #[test]
     fn test_get_words_from_text_file() {
         let temp_dir = TestEnvironment::new();
-        for (language_name, text_with_puntuation_marks, text_without_punctuation_marks) in TEXT_PAIRS {
+        for (language_name, text_with_puntuation_marks, text_without_punctuation_marks) in TEXT_TUPLES {
             let temporary_text = TemporaryTextFile::new(&temp_dir,
                                                         text_with_puntuation_marks,
                                                         text_without_punctuation_marks,
@@ -490,6 +509,73 @@ nahm.";
             temporary_text.normalized_text.split_ascii_whitespace().map(|word| expected_set.insert(word)).collect();
             let returned_set = get_words_from_text_file(temporary_text.temp_filename);
             assert!(expected_set.eq(&returned_set);)
+        }
+    }
+
+    #[test]
+    fn test_populate_words_from_text_files() {
+        let temp_dir = TestEnvironment::new();
+        let mut temporary_text_file = TemporaryTextFile::new(temp_dir,
+                                                         ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS,
+                                                         ENGLISH_TEXT_WITHOUT_PUNCTUATIONS_MARKS,
+                                                         "english");
+        let mut expected_set = HashSet::new();
+        let mut file_content = String::new();
+        temporary_text_file.text_file.read_to_string(&mut file_content);
+        file_content.to_lowercase().split_ascii_whitespace().map(|x| expected_set.insert(x)).collect();
+        {
+            let mut dictionary = Dictionary::new(&temporary_text_file.language_name, false)
+                .expect("Error opening dictionary");
+            dictionary.populate(&temporary_text_file.temp_filename);
+        }
+        {
+            let dictionary = Dictionary::new(&temporary_text_file.language_name, false)
+                .expect("Error opening dictionary");
+            assert!(expected_set.iter().all(|word| dictionary.word_exists(word)).collect());
+        }
+    }
+
+    #[test]
+    fn test_get_words_from_text() {
+        let test_tuples = &TEXT_TUPLES;
+        for test_tuple in test_tuples {
+            let mut expected_set = HashSet::new();
+            test_tuple.2.to_lowercase().split_ascii_whitespace().map(|word| expected_set.insert(word.to_string())).collect();
+            let returned_set = get_words_from_text(test_tuple.1);
+            assert_eq!(expected_set, returned_set);
+        }
+    }
+    
+    #[test]
+    fn test_get_dictionaries_names() {
+        let loaded_dictionaries = LoadedDictionaries::new();
+        let dictionaries_names = Dictionary::get_dictionaries_names();
+        assert_eq!(dictionaries_names, loaded_dictionaries.languages)
+    }
+
+    #[test]
+    fn test_add_multiple_words() {
+        let language = "english";
+        let micro_dictionaries = get_micro_dictionaries();
+        let mut words_to_add: HashSet<String> = HashSet::new();
+        micro_dictionaries[language].iter().map(|word| words_to_add.insert(word.clone()).collect());
+        let temp_dir = TestEnvironment::new();
+        let mut dictionary = Dictionary::new(language, true)
+            .expect("Error opening dictionary.");
+        assert!(!micro_dictionaries[language].iter().all(|word| dictionary.word_exists(word)).collect());
+        dictionary.add_multiple_words(words_to_add);
+        assert!(micro_dictionaries[language].iter().all(|word| dictionary.word_exists(word)).collect());
+    }
+
+    #[test]
+    fn test_identify_language() {
+        let loaded_dictionaries = LoadedDictionaries::new();
+        let test_cases = vec![(ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS, "english"),
+                              (SPANISH_TEXT_WITH_PUNCTUATIONS_MARKS), "spanish"];
+        for (text, language) in test_cases{
+            let identified_language = identify_language(text);
+            assert_eq!(identified_language.winner, language);
+            assert_eq!(identified_language.winner_probability, 1.0);
         }
     }
 }
