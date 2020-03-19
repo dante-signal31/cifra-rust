@@ -1,7 +1,7 @@
 use crate::attack::database::{Database, DatabaseSession};
 use std::collections::{HashSet, HashMap};
-use std::path::PathBuf;
-use std::error::{Error, fmt};
+use std::path::{PathBuf, Path};
+use std::error::Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
@@ -49,10 +49,12 @@ impl Dictionary {
     ///    set to True then language is registered in database as a new language.
     pub fn new<T>(language: T, create: bool)-> Result<Self, NotExistingLanguage>
         where T: AsRef<str> {
-        Ok(Dictionary {
-            language: String::from(language),
-            database
-            })
+        // let language = language.as_ref().to_string();
+        // Ok(Dictionary {
+        //     language,
+        //     database
+        //     })
+        unimplemented!()
     }
 
     /// Get open session for current dictionary database.
@@ -107,7 +109,7 @@ impl Dictionary {
     /// # Parameters:
     /// * file_pathname: Absolute path to file with text to analyze.
     pub fn populate<T>(&mut self, file_pathname: T)
-        where T: AsRef<PathBuf> {
+        where T: AsRef<Path> {
         unimplemented!()
     }
 
@@ -133,7 +135,7 @@ impl Dictionary {
 /// # Returns:
 /// A set of words normalized to lowercase and without any punctuation mark.
 pub fn get_words_from_text_file<T>(file_pathname: T) -> HashSet<String>
-    where T: AsRef<PathBuf> {
+    where T: AsRef<Path> {
     unimplemented!()
 }
 
@@ -160,7 +162,7 @@ pub fn get_words_from_text<T>(text: T)-> HashSet<String>
 /// * candidates: Dict with all languages probabilities. Probabilities are floats from 0 to 1.
 pub struct IdentifiedLanguage {
     winner: Option<String>,
-    winner_probability: Option<String>,
+    winner_probability: Option<f64>,
     candidates: HashMap<String, String>
 }
 
@@ -204,14 +206,15 @@ fn get_winner(candidates: HashMap<String, f64>)-> String {
 
 /// Error to alarm when you try to work with a Language that has not been created yet.
 #[derive(Debug)]
-struct NotExistingLanguage {
+pub struct NotExistingLanguage {
     language_tried: String
 }
 
 impl NotExistingLanguage {
     pub fn new<T>(language_tried: T)-> Self
         where T: AsRef<str> {
-        NotExistingLanguage{language_tried}
+        let language = language_tried.as_ref().to_string();
+        NotExistingLanguage{language_tried: language}
     }
 }
 
@@ -231,13 +234,11 @@ mod tests {
     use test_common::fs::ops::{copy_files};
     use test_common::fs::tmp::TestEnvironment;
     use test_common::system::env::TemporalEnvironmentVariable;
-    use test::TestEvent::TeFiltered;
     use std::ffi::OsString;
     use std::path::Path;
     use std::io::{Write, BufReader, Read};
     use crate::attack::database;
     use std::env::temp_dir;
-    use test::assert_test_result;
 
 
     const TEXT_FILE_NAME: &'static str = "text_to_load.txt";
@@ -333,18 +334,20 @@ nahm.";
             resources_path.push("resources");
             create_dir(&resources_path);
             copy_files(LANGUAGES.iter()
-                .map(|x| format!("cifra-rust/tests/resources/{}_book.txt", x))
+                .map(|x| format!("cifra-rust/tests/resources/{}_book.txt", x).as_str())
                 .collect(),
-                       resources_path.as_ref())
+                       resources_path.as_path().as_os_str().to_str()
+                           .expect("Path contains not unicode characters."))
                 .expect("Error copying books to temporal folder.");
             for language in LANGUAGES {
-                let mut dictionary = Dictionary::new(language, true);
+                let mut dictionary = Dictionary::new(language, true)
+                    .expect(format!("No dictionary found for {} language.", language).as_str());
                 let mut language_book = resources_path.clone();
                 language_book.push(format!("{}_book.txt", language));
                 dictionary.populate(language_book);
             }
             let mut languages = Vec::new();
-            LANGUAGES.iter().map(|x| languages.push(x.to_string())).collect();
+            LANGUAGES.iter().map(|x| languages.push(x.to_string())).collect::<Vec<_>>();
             LoadedDictionaries{
                 temp_dir,
                 languages,
@@ -354,12 +357,12 @@ nahm.";
     }
 
     /// Get a HashMap with languages as keys and a list of words for every language.
-    fn get_micro_dictionaries() -> HashMap<&str, Vec<String>>{
-        let mut micro_dictionaries: HashMap<&str, Vec<String>> = HashMap::new();
-        micro_dictionaries.insert("english", vec!("yes".to_string(), "no", "dog", "cat"));
-        micro_dictionaries.insert("spanish", vec!("si".to_string(), "no", "perro", "gato"));
-        micro_dictionaries.insert("french", vec!("qui".to_string(), "non", "chien", "chat"));
-        micro_dictionaries.insert("german", vec!("ja".to_string(), "nein", "hund", "katze"));
+    fn get_micro_dictionaries() -> HashMap<&'static str, Vec<String>>{
+        let mut micro_dictionaries: HashMap<&'static str, Vec<String>> = HashMap::new();
+        micro_dictionaries.insert("english", vec!("yes".to_string(), "no".to_string(), "dog".to_string(), "cat".to_string()));
+        micro_dictionaries.insert("spanish", vec!("si".to_string(), "no".to_string(), "perro".to_string(), "gato".to_string()));
+        micro_dictionaries.insert("french", vec!("qui".to_string(), "non".to_string(), "chien".to_string(), "chat".to_string()));
+        micro_dictionaries.insert("german", vec!("ja".to_string(), "nein".to_string(), "hund".to_string(), "katze".to_string()));
         micro_dictionaries
     }
 
@@ -371,12 +374,14 @@ nahm.";
         let micro_dictionaries= get_micro_dictionaries();
         let temp_env = TestEnvironment::new();
         for (language, words) in &micro_dictionaries {
-            let mut language_dictionary = Dictionary::new(language, true);
-            words.iter().map(|&word| language_dictionary.add_word(word)).collect();
+            let mut language_dictionary = Dictionary::new(language, true)
+                .expect(format!("Dictionary not found for {} language", language).as_str());
+            words.iter().map(|&word| language_dictionary.add_word(word)).collect::<Vec<_>>();
         }
         for (language, words) in micro_dictionaries {
-            let language_dictionary = Dictionary::new(language, false);
-            assert!(words.iter().all(|&word| language_dictionary.word_exists(word)).collect());
+            let language_dictionary = Dictionary::new(language, false)
+                .expect(format!("Dictionary not found for {} language", language).as_str());
+            assert!(words.iter().all(|&word| language_dictionary.word_exists(word)));
         }
         temp_env
     }
@@ -395,7 +400,7 @@ nahm.";
     impl TemporaryTextFile {
         pub fn new<T, U>(temp_dir: T, text: U, normalized_text: U, language_name: U)-> Self
             where T: AsRef<Path>,
-                  U: AsRed<str> {
+                  U: AsRef<str> {
             let mut temporary_text_file_pathname = PathBuf::from(temp_dir.as_ref().as_os_str());
             temporary_text_file_pathname.push(TEXT_FILE_NAME);
             let mut text_file = OpenOptions::new()
@@ -403,15 +408,22 @@ nahm.";
                                             .create(true)
                                             .open(&temporary_text_file_pathname)
                 .expect("Error opening temporary text file for writing into it.");
-            text_file.write_all(text);
+            text_file.write_all(text.as_ref().as_bytes());
             TemporaryTextFile {
                 text_file,
-                normalized_text,
-                language_name,
+                normalized_text: normalized_text.as_ref().to_string(),
+                language_name: language_name.as_ref().to_string(),
                 temp_filename: temporary_text_file_pathname
             }
         }
     }
+
+    impl AsRef<Path> for TemporaryTextFile {
+        fn as_ref(&self) -> &Path {
+            self.temp_filename.as_path()
+        }
+    }
+
 
     /// Creates a temporary folder and set that folder at database home.
     ///
@@ -425,7 +437,9 @@ nahm.";
         };
         let mut temp_database_path = PathBuf::from(temp_dir.path());
         temp_database_path.push("cifra_database.sqlite");
-        let temp_env_database_path = TemporalEnvironmentVariable::new(database::DATABASE_ENV_VAR, temp_database_path.as_os_str());
+        let temp_env_database_path = TemporalEnvironmentVariable::new(database::DATABASE_ENV_VAR,
+                                                                      temp_database_path.as_os_str().to_str()
+                                                                          .expect("Path contains non unicode chars."));
         (temp_dir, temp_env_database_path)
     }
 
@@ -483,7 +497,7 @@ nahm.";
     #[test]
     /// Test delete a language also removes its words.
     fn test_delete_language() {
-        let micro_dictionaries = get_micro_dictionaries()
+        let mut micro_dictionaries = get_micro_dictionaries();
         let loaded_dictionary = loaded_dictionary_temp_dir();
         let (temp_dir, temp_env_database_path) = temporary_database_folder(Some(loaded_dictionary));
         let language_to_remove = "german";
@@ -493,8 +507,9 @@ nahm.";
             language: language_to_remove.to_string(),
             database: database::create_database()
         };
-        assert!(micro_dictionaries.get(language_to_remove).iter()
-            .all(|word| !not_existing_dictionary.word_exists(word)));
+        let micro_dictionary = micro_dictionaries.get(language_to_remove)
+            .expect("Error opening dictionary to be removed");
+        assert!(micro_dictionary.iter().all(|word| !not_existing_dictionary.word_exists(word)));
     }
 
     #[test]
@@ -506,7 +521,7 @@ nahm.";
                                                         text_without_punctuation_marks,
                                                         language_name);
             let mut expected_set = HashSet::new();
-            temporary_text.normalized_text.split_ascii_whitespace().map(|word| expected_set.insert(word)).collect();
+            temporary_text.normalized_text.split_ascii_whitespace().map(|word| expected_set.insert(word.to_string())).collect::<Vec<_>>();
             let returned_set = get_words_from_text_file(temporary_text.temp_filename);
             assert!(expected_set.eq(&returned_set);)
         }
@@ -522,16 +537,16 @@ nahm.";
         let mut expected_set = HashSet::new();
         let mut file_content = String::new();
         temporary_text_file.text_file.read_to_string(&mut file_content);
-        file_content.to_lowercase().split_ascii_whitespace().map(|x| expected_set.insert(x)).collect();
+        file_content.to_lowercase().split_ascii_whitespace().map(|x| expected_set.insert(x)).collect::<Vec<_>>();
         {
             let mut dictionary = Dictionary::new(&temporary_text_file.language_name, false)
                 .expect("Error opening dictionary");
-            dictionary.populate(&temporary_text_file.temp_filename);
+            dictionary.populate(temporary_text_file.temp_filename.as_path());
         }
         {
             let dictionary = Dictionary::new(&temporary_text_file.language_name, false)
                 .expect("Error opening dictionary");
-            assert!(expected_set.iter().all(|word| dictionary.word_exists(word)).collect());
+            assert!(expected_set.iter().all(|word| dictionary.word_exists(word)));
         }
     }
 
@@ -540,7 +555,7 @@ nahm.";
         let test_tuples = &TEXT_TUPLES;
         for test_tuple in test_tuples {
             let mut expected_set = HashSet::new();
-            test_tuple.2.to_lowercase().split_ascii_whitespace().map(|word| expected_set.insert(word.to_string())).collect();
+            test_tuple.2.to_lowercase().split_ascii_whitespace().map(|word| expected_set.insert(word.to_string())).collect::<Vec<_>>();
             let returned_set = get_words_from_text(test_tuple.1);
             assert_eq!(expected_set, returned_set);
         }
@@ -558,24 +573,32 @@ nahm.";
         let language = "english";
         let micro_dictionaries = get_micro_dictionaries();
         let mut words_to_add: HashSet<String> = HashSet::new();
-        micro_dictionaries[language].iter().map(|word| words_to_add.insert(word.clone()).collect());
+        micro_dictionaries[language].iter().map(|word| words_to_add.insert(word.clone())).collect::<Vec<_>>();
         let temp_dir = TestEnvironment::new();
         let mut dictionary = Dictionary::new(language, true)
             .expect("Error opening dictionary.");
-        assert!(!micro_dictionaries[language].iter().all(|word| dictionary.word_exists(word)).collect());
+        assert!(!micro_dictionaries[language].iter().all(|word| dictionary.word_exists(word)));
         dictionary.add_multiple_words(words_to_add);
-        assert!(micro_dictionaries[language].iter().all(|word| dictionary.word_exists(word)).collect());
+        assert!(micro_dictionaries[language].iter().all(|word| dictionary.word_exists(word)));
     }
 
     #[test]
     fn test_identify_language() {
         let loaded_dictionaries = LoadedDictionaries::new();
         let test_cases = vec![(ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS, "english"),
-                              (SPANISH_TEXT_WITH_PUNCTUATIONS_MARKS), "spanish"];
+                              (SPANISH_TEXT_WITH_PUNCTUATIONS_MARKS, "spanish")];
         for (text, language) in test_cases{
             let identified_language = identify_language(text);
-            assert_eq!(identified_language.winner, language);
-            assert_eq!(identified_language.winner_probability, 1.0);
+            if let Some(winner) = identified_language.winner {
+                assert_eq!(winner, language, "Language not correctly identified.");
+            } else {
+                assert!(false, "Language not identified")
+            }
+            if let Some(winner_probability) = identified_language.winner_probability {
+                assert_eq!(winner_probability, 1.0, "Language probability incorrectly calculated.");
+            } else {
+                assert!(false, "Language probability not found.")
+            }
         }
     }
 }
