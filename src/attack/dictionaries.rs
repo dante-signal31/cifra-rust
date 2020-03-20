@@ -311,13 +311,7 @@ noch den Gasthof „Zum Admiral Benbow“ hielt und jener dunkle, alte
 Seemann mit dem Säbelhieb über der Wange unter unserem Dache Wohnung
 nahm.";
 
-    const TEXT_TUPLES: Vec<(&'static str, &'static str, &'static str)> = vec![
-        ("english", ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS, ENGLISH_TEXT_WITHOUT_PUNCTUATIONS_MARKS),
-        ("spanish", SPANISH_TEXT_WITH_PUNCTUATIONS_MARKS, SPANISH_TEXT_WITHOUT_PUNCTUATIONS_MARKS),
-        ("french", FRENCH_TEXT_WITH_PUNCTUATIONS_MARKS, FRENCH_TEXT_WITHOUT_PUNCTUATIONS_MARKS),
-        ("german", GERMAN_TEXT_WITH_PUNCTUATIONS_MARKS, GERMAN_TEXT_WITHOUT_PUNCTUATIONS_MARKS)];
-
-    const LANGUAGES: Vec<&str> = vec!["english", "spanish", "french", "german"];
+    const LANGUAGES: [&'static str; 4] = ["english", "spanish", "french", "german"];
 
     /// Class with info to use a temporary dictionaries database.
     struct LoadedDictionaries {
@@ -334,12 +328,12 @@ nahm.";
             resources_path.push("resources");
             create_dir(&resources_path);
             copy_files(LANGUAGES.iter()
-                .map(|x| format!("cifra-rust/tests/resources/{}_book.txt", x).as_str())
+                .map(|x| format!("cifra-rust/tests/resources/{}_book.txt", x))
                 .collect(),
                        resources_path.as_path().as_os_str().to_str()
                            .expect("Path contains not unicode characters."))
                 .expect("Error copying books to temporal folder.");
-            for language in LANGUAGES {
+            for language in LANGUAGES.iter() {
                 let mut dictionary = Dictionary::new(language, true)
                     .expect(format!("No dictionary found for {} language.", language).as_str());
                 let mut language_book = resources_path.clone();
@@ -354,6 +348,15 @@ nahm.";
                 temp_env
             }
         }
+    }
+
+    /// Get tuples with a language name, a text with punctuations marks and a text without it.
+    fn get_text_tuples()-> Vec<(&'static str, &'static str, &'static str)> {
+        vec![
+            ("english", ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS, ENGLISH_TEXT_WITHOUT_PUNCTUATIONS_MARKS),
+            ("spanish", SPANISH_TEXT_WITH_PUNCTUATIONS_MARKS, SPANISH_TEXT_WITHOUT_PUNCTUATIONS_MARKS),
+            ("french", FRENCH_TEXT_WITH_PUNCTUATIONS_MARKS, FRENCH_TEXT_WITHOUT_PUNCTUATIONS_MARKS),
+            ("german", GERMAN_TEXT_WITH_PUNCTUATIONS_MARKS, GERMAN_TEXT_WITHOUT_PUNCTUATIONS_MARKS)]
     }
 
     /// Get a HashMap with languages as keys and a list of words for every language.
@@ -376,12 +379,12 @@ nahm.";
         for (language, words) in &micro_dictionaries {
             let mut language_dictionary = Dictionary::new(language, true)
                 .expect(format!("Dictionary not found for {} language", language).as_str());
-            words.iter().map(|&word| language_dictionary.add_word(word)).collect::<Vec<_>>();
+            words.iter().map(|word| language_dictionary.add_word(word)).collect::<Vec<_>>();
         }
         for (language, words) in micro_dictionaries {
             let language_dictionary = Dictionary::new(language, false)
                 .expect(format!("Dictionary not found for {} language", language).as_str());
-            assert!(words.iter().all(|&word| language_dictionary.word_exists(word)));
+            assert!(words.iter().all(|word| language_dictionary.word_exists(word)));
         }
         temp_env
     }
@@ -515,7 +518,8 @@ nahm.";
     #[test]
     fn test_get_words_from_text_file() {
         let temp_dir = TestEnvironment::new();
-        for (language_name, text_with_puntuation_marks, text_without_punctuation_marks) in TEXT_TUPLES {
+        let text_tuples = get_text_tuples();
+        for (language_name, text_with_puntuation_marks, text_without_punctuation_marks) in text_tuples {
             let temporary_text = TemporaryTextFile::new(&temp_dir,
                                                         text_with_puntuation_marks,
                                                         text_without_punctuation_marks,
@@ -537,7 +541,8 @@ nahm.";
         let mut expected_set = HashSet::new();
         let mut file_content = String::new();
         temporary_text_file.text_file.read_to_string(&mut file_content);
-        file_content.to_lowercase().split_ascii_whitespace().map(|x| expected_set.insert(x)).collect::<Vec<_>>();
+        let lowercase_content = file_content.to_lowercase();
+        lowercase_content.split_ascii_whitespace().map(|x| expected_set.insert(x)).collect::<Vec<_>>();
         {
             let mut dictionary = Dictionary::new(&temporary_text_file.language_name, false)
                 .expect("Error opening dictionary");
@@ -552,7 +557,7 @@ nahm.";
 
     #[test]
     fn test_get_words_from_text() {
-        let test_tuples = &TEXT_TUPLES;
+        let test_tuples = get_text_tuples();
         for test_tuple in test_tuples {
             let mut expected_set = HashSet::new();
             test_tuple.2.to_lowercase().split_ascii_whitespace().map(|word| expected_set.insert(word.to_string())).collect::<Vec<_>>();
