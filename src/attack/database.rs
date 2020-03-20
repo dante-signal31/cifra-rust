@@ -4,7 +4,6 @@ use diesel::sqlite::SqliteConnection;
 use dotenv::dotenv;
 use std::env;
 use std::env::VarError;
-// use std::path::PathBuf;
 
 embed_migrations!();
 
@@ -22,10 +21,10 @@ const DATABASE_STANDARD_PATH: &'static str = "~/.cifra/cifra_database.sqlite";
 /// returning a VarError.
 ///
 /// Returns:
-/// Ok(()) is DEFAULT_URL exists and a VarError if not.
-fn check_database_url_env_var_exists()-> Result<(), VarError>{
+/// Environment value if DEFAULT_URL exists and a VarError if not.
+fn check_database_url_env_var_exists()-> Result<String, VarError>{
     return match env::var(DATABASE_ENV_VAR) {
-        Ok(_var_value) => Ok(()),
+        Ok(var_value) => Ok(var_value),
         Err(e) => {
             env::set_var(DATABASE_ENV_VAR, DATABASE_STANDARD_PATH);
             Err(e)
@@ -42,16 +41,18 @@ pub fn create_database()-> Database{
 }
 
 pub struct Database {
-    pub session: DatabaseSession
+    pub session: DatabaseSession,
+    database_path: String
 }
 
 impl Database {
 
     pub fn new() -> Self {
-        check_database_url_env_var_exists()
+        let database_path = check_database_url_env_var_exists()
             .expect("Error checking if DATABASE_URL environment variable exists.");
         Database {
-           session: Self::open_session()
+           session: Self::open_session(),
+           database_path
         }
     }
 
@@ -86,11 +87,12 @@ mod tests {
             None=> panic!("Path uses non valid characters.")
         };
         // Database does not exists yet.
-        assert!(!Path::new(absolute_pathname_to_database).exists());
+        let database_path = Path::new(absolute_pathname_to_database);
+        assert!(!database_path.exists());
         let test_env = TemporalEnvironmentVariable::new("DATABASE_URL", absolute_pathname_to_database);
         create_database();
         // Database now exists.
-        assert!(Path::new(absolute_pathname_to_database).exists());
+        assert!(database_path.exists());
     }
 
 

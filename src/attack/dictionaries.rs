@@ -229,13 +229,12 @@ impl Display for NotExistingLanguage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use PathBuf;
     use std::fs::{create_dir, File, OpenOptions};
     use test_common::fs::ops::{copy_files};
     use test_common::fs::tmp::TestEnvironment;
     use test_common::system::env::TemporalEnvironmentVariable;
     use std::ffi::OsString;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use std::io::{Write, BufReader, Read};
     use crate::attack::database;
     use std::env::temp_dir;
@@ -527,7 +526,7 @@ nahm.";
             let mut expected_set = HashSet::new();
             temporary_text.normalized_text.split_ascii_whitespace().map(|word| expected_set.insert(word.to_string())).collect::<Vec<_>>();
             let returned_set = get_words_from_text_file(temporary_text.temp_filename);
-            assert!(expected_set.eq(&returned_set);)
+            assert!(expected_set.eq(&returned_set));
         }
     }
 
