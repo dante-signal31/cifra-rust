@@ -4,7 +4,7 @@ use diesel::sqlite::SqliteConnection;
 use dotenv::dotenv;
 use std::env;
 use std::env::VarError;
-use std::path::PathBuf;
+// use std::path::PathBuf;
 
 embed_migrations!();
 
@@ -36,7 +36,8 @@ fn check_database_url_env_var_exists()-> Result<(), VarError>{
 /// Create and populate database with its default tables.
 pub fn create_database()-> Database{
     let database = Database::new();
-    embedded_migrations::run(&database.session);
+    embedded_migrations::run(&database.session)
+        .expect("Error running database migrations.");
     database
 }
 
@@ -47,7 +48,8 @@ pub struct Database {
 impl Database {
 
     pub fn new() -> Self {
-        check_database_url_env_var_exists();
+        check_database_url_env_var_exists()
+            .expect("Error checking if DATABASE_URL environment variable exists.");
         Database {
            session: Self::open_session()
         }

@@ -1,6 +1,6 @@
 use crate::attack::database::{Database, DatabaseSession};
 use std::collections::{HashSet, HashMap};
-use std::path::{PathBuf, Path};
+use std::path::Path;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
