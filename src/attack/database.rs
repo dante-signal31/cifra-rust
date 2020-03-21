@@ -5,6 +5,11 @@ use dotenv::dotenv;
 use std::env;
 use std::env::VarError;
 
+use crate::schema::languages;
+use crate::schema::languages::dsl::*;
+use crate::schema::words;
+use crate::schema::words::dsl::*;
+
 embed_migrations!();
 
 pub type DatabaseSession = SqliteConnection;
@@ -68,6 +73,48 @@ impl Database {
             .expect(&format!("Error connecting to {}", database_url))
     }
 }
+
+/// Model for Languages database table.
+#[derive(Queryable, Identifiable, Associations, Debug, PartialEq)]
+#[table_name="languages"]
+// #[has_many(words)]
+pub struct Language {
+    pub id: i32,
+    pub language: String,
+}
+
+#[derive(Insertable)]
+#[table_name="languages"]
+pub struct NewLanguage<'a> {
+    pub language: &'a str,
+}
+
+
+/// Model for Words database table.
+#[derive(Queryable, Identifiable, Associations, Debug, PartialEq)]
+#[table_name="words"]
+#[belongs_to(Language)]
+pub struct Word {
+    pub id: i32,
+    pub word: String,
+    pub language_id: i32
+}
+
+#[derive(Insertable)]
+#[table_name="words"]
+struct NewWord<'a> {
+    word: &'a str,
+    language_id: i32
+}
+
+// impl NewWord {
+//     pub fn new<T, U>(word: T, language: U)-> Self
+//         where T: AsRef<str>,
+//               U: AsRef<str> {
+//         unimplemented!()
+//     }
+// }
+
 
 
 #[cfg(test)]

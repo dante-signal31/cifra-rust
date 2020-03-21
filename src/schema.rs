@@ -1,13 +1,13 @@
 table! {
     languages (id) {
-        id -> Nullable<Integer>,
+        id -> Integer,
         language -> Text,
     }
 }
 
 table! {
     words (id) {
-        id -> Nullable<Integer>,
+        id -> Integer,
         word -> Text,
         language_id -> Integer,
     }

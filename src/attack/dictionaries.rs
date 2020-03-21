@@ -1,13 +1,22 @@
-use crate::attack::database::{Database, DatabaseSession};
+/// Module to deal with words dictionaries.
+///
+/// A dictionary is a repository of distinct words present in an actual language.
 use std::collections::{HashSet, HashMap};
 use std::path::Path;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
+use diesel::RunQueryDsl;
+use diesel::prelude::*;
 
-/// Module to deal with words dictionaries.
-///
-/// A dictionary is a repository of distinct words present in an actual language.
+use crate::attack::database::{Database, DatabaseSession, Language, NewLanguage};
+use crate::schema::*;
+use crate::schema::languages;
+use crate::schema::languages::dsl::*;
+use crate::schema::words;
+use crate::schema::words::dsl::*;
+
+
 
 /// Cifra stores word dictionaries in a local database. This class
 /// is a wrapper to not to deal directly with that database.
@@ -28,7 +37,7 @@ impl Dictionary {
     ///
     /// # Parameters:
     /// * language: Language to remove from database.
-    pub fn remove_dictionary<T>(language: T)
+    pub fn remove_dictionary<T>(_language: T)
         where T: AsRef<str> {
         unimplemented!();
     }
@@ -47,7 +56,7 @@ impl Dictionary {
     ///    It defaults to False. If it is set to False and language is not already present at
     ///    database then a dictionaries.NotExistingLanguage exception is raised, but if it is
     ///    set to True then language is registered in database as a new language.
-    pub fn new<T>(language: T, create: bool)-> Result<Self, NotExistingLanguage>
+    pub fn new<T>(_language: T, create: bool)-> Result<Self, NotExistingLanguage>
         where T: AsRef<str> {
         // let language = language.as_ref().to_string();
         // Ok(Dictionary {
@@ -68,7 +77,7 @@ impl Dictionary {
     ///
     /// # Parameters:
     /// * word: word to add to dictionary.
-    pub fn add_word<T>(&mut self, word: T)
+    pub fn add_word<T>(&mut self, _word: T)
         where T: AsRef<str> {
         unimplemented!()
     }
@@ -77,7 +86,7 @@ impl Dictionary {
     ///
     /// # Parameters:
     /// * words: Set of words to add to dictionary.
-    pub fn add_multiple_words(&mut self, words: HashSet<String>){
+    pub fn add_multiple_words(&mut self, _words: HashSet<String>){
         unimplemented!()
     }
 
@@ -87,7 +96,7 @@ impl Dictionary {
     ///
     /// # Parameters:
     /// * word: word to remove from dictionary.
-    pub fn remove_word<T>(&mut self, word: T)
+    pub fn remove_word<T>(&mut self, _word: T)
         where T: AsRef<str> {
         unimplemented!()
     }
@@ -99,7 +108,7 @@ impl Dictionary {
     ///
     /// # Returns:
     /// True if word is already present at dictionary, False otherwise.
-    pub fn word_exists<T>(&self, word: T) -> bool
+    pub fn word_exists<T>(&self, _word: T) -> bool
         where T: AsRef<str> {
         unimplemented!()
     }
@@ -118,12 +127,22 @@ impl Dictionary {
     /// # Returns:
     /// True if a table exists for this instance language, otherwise False.
     fn already_created(&self)-> bool {
-        unimplemented!()
+        if let Ok(_) = languages::table.filter(language.eq(&self.language))
+            .select(languages::id)
+            .first::<i32>(self.session()) {
+            true
+        } else {
+            false
+        }
     }
 
     /// Create this instance language table in database.
     fn create_dictionary(&mut self) {
-
+        let new_language = NewLanguage {language: self.language.as_str()};
+        diesel::insert_into(languages::table)
+            .values(&new_language)
+            .execute(self.session())
+            .expect("Error saving new language.");
     }
 }
 
@@ -190,7 +209,7 @@ pub fn identify_language<T>(text: T)-> IdentifiedLanguage
 /// * Dict with all languages probabilities. Probabilities are floats
 ///    from 0 to 1. The higher the frequency of presence of words in language
 ///    the higher of this probability.
-fn get_candidates_frecuency(words: HashSet<String>)-> HashMap<String, f64> {
+fn get_candidates_frecuency(_words: HashSet<String>)-> HashMap<String, f64> {
     unimplemented!()
 }
 
@@ -213,8 +232,8 @@ pub struct NotExistingLanguage {
 impl NotExistingLanguage {
     pub fn new<T>(language_tried: T)-> Self
         where T: AsRef<str> {
-        let language = language_tried.as_ref().to_string();
-        NotExistingLanguage{language_tried: language}
+        let _language = language_tried.as_ref().to_string();
+        NotExistingLanguage{language_tried: _language }
     }
 }
 
@@ -332,18 +351,18 @@ nahm.";
                        resources_path.as_path().as_os_str().to_str()
                            .expect("Path contains not unicode characters."))
                 .expect("Error copying books to temporal folder.");
-            for language in LANGUAGES.iter() {
-                let mut dictionary = Dictionary::new(language, true)
-                    .expect(format!("No dictionary found for {} language.", language).as_str());
+            for _language in LANGUAGES.iter() {
+                let mut dictionary = Dictionary::new(_language, true)
+                    .expect(format!("No dictionary found for {} language.", _language).as_str());
                 let mut language_book = resources_path.clone();
-                language_book.push(format!("{}_book.txt", language));
+                language_book.push(format!("{}_book.txt", _language));
                 dictionary.populate(language_book);
             }
-            let mut languages = Vec::new();
-            LANGUAGES.iter().map(|x| languages.push(x.to_string())).collect::<Vec<_>>();
+            let mut _languages = Vec::new();
+            LANGUAGES.iter().map(|x| _languages.push(x.to_string())).collect::<Vec<_>>();
             LoadedDictionaries{
                 temp_dir,
-                languages,
+                languages: _languages,
                 temp_env
             }
         }
@@ -375,15 +394,15 @@ nahm.";
     fn loaded_dictionary_temp_dir()-> TestEnvironment {
         let micro_dictionaries= get_micro_dictionaries();
         let temp_env = TestEnvironment::new();
-        for (language, words) in &micro_dictionaries {
-            let mut language_dictionary = Dictionary::new(language, true)
-                .expect(format!("Dictionary not found for {} language", language).as_str());
-            words.iter().map(|word| language_dictionary.add_word(word)).collect::<Vec<_>>();
+        for (_language, _words) in &micro_dictionaries {
+            let mut language_dictionary = Dictionary::new(_language, true)
+                .expect(format!("Dictionary not found for {} language", _language).as_str());
+            _words.iter().map(|_word| language_dictionary.add_word(_word)).collect::<Vec<_>>();
         }
-        for (language, words) in micro_dictionaries {
-            let language_dictionary = Dictionary::new(language, false)
-                .expect(format!("Dictionary not found for {} language", language).as_str());
-            assert!(words.iter().all(|word| language_dictionary.word_exists(word)));
+        for (_language, _words) in micro_dictionaries {
+            let language_dictionary = Dictionary::new(_language, false)
+                .expect(format!("Dictionary not found for {} language", _language).as_str());
+            assert!(_words.iter().all(|_word| language_dictionary.word_exists(_word)));
         }
         temp_env
     }
@@ -473,14 +492,14 @@ nahm.";
     /// Test if we can check for word existence, write a new word and finally delete it.
     fn test_cwd_word() {
         let (temp_dir, temp_env_database_path) = temporary_database_folder(None);
-        let word = "test";
+        let _word = "test";
         let mut english_dictionary = Dictionary::new("english", true)
             .expect("Error opening dictionary");
-        assert!(!english_dictionary.word_exists(word));
-        english_dictionary.add_word(word);
-        assert!(english_dictionary.word_exists(word));
-        english_dictionary.remove_word(word);
-        assert!(!english_dictionary.word_exists(word));
+        assert!(!english_dictionary.word_exists(_word));
+        english_dictionary.add_word(_word);
+        assert!(english_dictionary.word_exists(_word));
+        english_dictionary.remove_word(_word);
+        assert!(!english_dictionary.word_exists(_word));
     }
 
     #[test]
@@ -511,7 +530,7 @@ nahm.";
         };
         let micro_dictionary = micro_dictionaries.get(language_to_remove)
             .expect("Error opening dictionary to be removed");
-        assert!(micro_dictionary.iter().all(|word| !not_existing_dictionary.word_exists(word)));
+        assert!(micro_dictionary.iter().all(|_word| !not_existing_dictionary.word_exists(_word)));
     }
 
     #[test]
@@ -524,7 +543,7 @@ nahm.";
                                                         text_without_punctuation_marks,
                                                         language_name);
             let mut expected_set = HashSet::new();
-            temporary_text.normalized_text.split_ascii_whitespace().map(|word| expected_set.insert(word.to_string())).collect::<Vec<_>>();
+            temporary_text.normalized_text.split_ascii_whitespace().map(|_word| expected_set.insert(_word.to_string())).collect::<Vec<_>>();
             let returned_set = get_words_from_text_file(temporary_text.temp_filename);
             assert!(expected_set.eq(&returned_set));
         }
@@ -550,7 +569,7 @@ nahm.";
         {
             let dictionary = Dictionary::new(&temporary_text_file.language_name, false)
                 .expect("Error opening dictionary");
-            assert!(expected_set.iter().all(|word| dictionary.word_exists(word)));
+            assert!(expected_set.iter().all(|_word| dictionary.word_exists(_word)));
         }
     }
 
@@ -559,7 +578,7 @@ nahm.";
         let test_tuples = get_text_tuples();
         for test_tuple in test_tuples {
             let mut expected_set = HashSet::new();
-            test_tuple.2.to_lowercase().split_ascii_whitespace().map(|word| expected_set.insert(word.to_string())).collect::<Vec<_>>();
+            test_tuple.2.to_lowercase().split_ascii_whitespace().map(|_word| expected_set.insert(_word.to_string())).collect::<Vec<_>>();
             let returned_set = get_words_from_text(test_tuple.1);
             assert_eq!(expected_set, returned_set);
         }
@@ -574,16 +593,16 @@ nahm.";
 
     #[test]
     fn test_add_multiple_words() {
-        let language = "english";
+        let _language = "english";
         let micro_dictionaries = get_micro_dictionaries();
         let mut words_to_add: HashSet<String> = HashSet::new();
-        micro_dictionaries[language].iter().map(|word| words_to_add.insert(word.clone())).collect::<Vec<_>>();
+        micro_dictionaries[_language].iter().map(|_word| words_to_add.insert(_word.clone())).collect::<Vec<_>>();
         let temp_dir = TestEnvironment::new();
-        let mut dictionary = Dictionary::new(language, true)
+        let mut dictionary = Dictionary::new(_language, true)
             .expect("Error opening dictionary.");
-        assert!(!micro_dictionaries[language].iter().all(|word| dictionary.word_exists(word)));
+        assert!(!micro_dictionaries[_language].iter().all(|_word| dictionary.word_exists(_word)));
         dictionary.add_multiple_words(words_to_add);
-        assert!(micro_dictionaries[language].iter().all(|word| dictionary.word_exists(word)));
+        assert!(micro_dictionaries[_language].iter().all(|_word| dictionary.word_exists(_word)));
     }
 
     #[test]
@@ -591,10 +610,10 @@ nahm.";
         let loaded_dictionaries = LoadedDictionaries::new();
         let test_cases = vec![(ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS, "english"),
                               (SPANISH_TEXT_WITH_PUNCTUATIONS_MARKS, "spanish")];
-        for (text, language) in test_cases{
+        for (text, _language) in test_cases{
             let identified_language = identify_language(text);
             if let Some(winner) = identified_language.winner {
-                assert_eq!(winner, language, "Language not correctly identified.");
+                assert_eq!(winner, _language, "Language not correctly identified.");
             } else {
                 assert!(false, "Language not identified")
             }
