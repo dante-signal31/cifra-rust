@@ -15,7 +15,7 @@ use crate::schema::languages;
 use crate::schema::languages::dsl::*;
 use crate::schema::words;
 use crate::schema::words::dsl::*;
-
+use diesel::result::Error::DatabaseError;
 
 
 /// Cifra stores word dictionaries in a local database. This class
@@ -27,6 +27,7 @@ use crate::schema::words::dsl::*;
 /// further methods to manage its words.
 pub struct Dictionary {
     pub language: String,
+    language_id: i32,
     database: Database
 }
 
@@ -58,12 +59,25 @@ impl Dictionary {
     ///    set to True then language is registered in database as a new language.
     pub fn new<T>(_language: T, create: bool)-> Result<Self, NotExistingLanguage>
         where T: AsRef<str> {
-        // let language = language.as_ref().to_string();
-        // Ok(Dictionary {
-        //     language,
-        //     database
-        //     })
-        unimplemented!()
+        let new_language = _language.as_ref().to_string();
+        let current_database = Database::new();
+        let mut current_dictionary = Dictionary {
+            language: new_language,
+            language_id: 0,
+            database:current_database
+        };
+        if !current_dictionary.already_created() {
+            if create {
+                current_dictionary.create_dictionary();
+            } else {
+                 return Err(NotExistingLanguage::new(&_language))
+            }
+        }
+        current_dictionary.language_id = languages::table.filter(language.eq(&current_dictionary.language))
+            .select(languages::id)
+            .first::<i32>(current_dictionary.session())
+            .expect("Language that does not exists in database yet.");
+        Ok(current_dictionary)
     }
 
     /// Get open session for current dictionary database.
@@ -110,7 +124,13 @@ impl Dictionary {
     /// True if word is already present at dictionary, False otherwise.
     pub fn word_exists<T>(&self, _word: T) -> bool
         where T: AsRef<str> {
-        unimplemented!()
+        if let Ok(count) = words::table.filter(word.eq(_word.as_ref()).and(language_id.eq(&self.language_id)))
+            .count()
+            .first::<i64>(self.session()) {
+            if count > 0 {true} else {false}
+        } else {
+            false
+        }
     }
 
     /// Read a file's words and stores them at this language database.
@@ -143,6 +163,10 @@ impl Dictionary {
             .values(&new_language)
             .execute(self.session())
             .expect("Error saving new language.");
+        self.language_id = languages::table.filter(language.eq(&self.language))
+            .select(languages::id)
+            .first::<i32>(self.session())
+            .expect("Error getting newly created language id.");
     }
 }
 
@@ -391,9 +415,11 @@ nahm.";
     ///
     /// # Returns:
     /// Yields created temp_dir to host temporal dictionary database.
-    fn loaded_dictionary_temp_dir()-> TestEnvironment {
+    fn loaded_dictionary_temp_dir()-> (TestEnvironment, TemporalEnvironmentVariable) {
+        let (temp_env, temp_env_database_path) = temporary_database_folder(None);
+        database::create_database();
         let micro_dictionaries= get_micro_dictionaries();
-        let temp_env = TestEnvironment::new();
+        // let temp_env = TestEnvironment::new();
         for (_language, _words) in &micro_dictionaries {
             let mut language_dictionary = Dictionary::new(_language, true)
                 .expect(format!("Dictionary not found for {} language", _language).as_str());
@@ -404,7 +430,7 @@ nahm.";
                 .expect(format!("Dictionary not found for {} language", _language).as_str());
             assert!(_words.iter().all(|_word| language_dictionary.word_exists(_word)));
         }
-        temp_env
+        (temp_env, temp_env_database_path)
     }
 
     /// File with denormalized text in a temporary path.
@@ -492,6 +518,7 @@ nahm.";
     /// Test if we can check for word existence, write a new word and finally delete it.
     fn test_cwd_word() {
         let (temp_dir, temp_env_database_path) = temporary_database_folder(None);
+        database::create_database();
         let _word = "test";
         let mut english_dictionary = Dictionary::new("english", true)
             .expect("Error opening dictionary");
@@ -508,6 +535,7 @@ nahm.";
         let (temp_dir, temp_env_database_path) = temporary_database_folder(None);
         let mut english_dictionary = Dictionary {
             language: "english".to_string(),
+            language_id: 0,
             database: database::create_database()
         };
         assert!(!english_dictionary.already_created());
@@ -519,13 +547,13 @@ nahm.";
     /// Test delete a language also removes its words.
     fn test_delete_language() {
         let mut micro_dictionaries = get_micro_dictionaries();
-        let loaded_dictionary = loaded_dictionary_temp_dir();
-        let (temp_dir, temp_env_database_path) = temporary_database_folder(Some(loaded_dictionary));
+        let (temp_dir, temp_env_database_path) = loaded_dictionary_temp_dir();
         let language_to_remove = "german";
         Dictionary::remove_dictionary(language_to_remove);
         // Check all words from removed language have been removed too.
         let not_existing_dictionary = Dictionary {
             language: language_to_remove.to_string(),
+            language_id: 0,
             database: database::create_database()
         };
         let micro_dictionary = micro_dictionaries.get(language_to_remove)
@@ -593,11 +621,12 @@ nahm.";
 
     #[test]
     fn test_add_multiple_words() {
+        let (temp_dir, temp_env_database_path) = temporary_database_folder(None);
+        database::create_database();
         let _language = "english";
         let micro_dictionaries = get_micro_dictionaries();
         let mut words_to_add: HashSet<String> = HashSet::new();
         micro_dictionaries[_language].iter().map(|_word| words_to_add.insert(_word.clone())).collect::<Vec<_>>();
-        let temp_dir = TestEnvironment::new();
         let mut dictionary = Dictionary::new(_language, true)
             .expect("Error opening dictionary.");
         assert!(!micro_dictionaries[_language].iter().all(|_word| dictionary.word_exists(_word)));
