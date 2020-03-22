@@ -102,20 +102,10 @@ pub struct Word {
 
 #[derive(Insertable)]
 #[table_name="words"]
-struct NewWord<'a> {
-    word: &'a str,
-    language_id: i32
+pub struct NewWord<'a> {
+    pub word: &'a str,
+    pub language_id: i32
 }
-
-// impl NewWord {
-//     pub fn new<T, U>(word: T, language: U)-> Self
-//         where T: AsRef<str>,
-//               U: AsRef<str> {
-//         unimplemented!()
-//     }
-// }
-
-
 
 #[cfg(test)]
 mod tests {

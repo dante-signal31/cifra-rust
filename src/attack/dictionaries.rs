@@ -9,7 +9,7 @@ use std::fmt::{Display, Formatter};
 use diesel::RunQueryDsl;
 use diesel::prelude::*;
 
-use crate::attack::database::{Database, DatabaseSession, Language, NewLanguage};
+use crate::attack::database::{Database, DatabaseSession, Language, NewLanguage, NewWord};
 use crate::schema::*;
 use crate::schema::languages;
 use crate::schema::languages::dsl::*;
@@ -93,7 +93,14 @@ impl Dictionary {
     /// * word: word to add to dictionary.
     pub fn add_word<T>(&mut self, _word: T)
         where T: AsRef<str> {
-        unimplemented!()
+        let new_word = NewWord {
+            word: _word.as_ref(),
+            language_id: self.language_id
+        };
+        diesel::insert_into(words::table)
+            .values(&new_word)
+            .execute(self.session())
+            .expect("Error saving new word.");
     }
 
     /// Add given words to dictionary.
@@ -112,7 +119,9 @@ impl Dictionary {
     /// * word: word to remove from dictionary.
     pub fn remove_word<T>(&mut self, _word: T)
         where T: AsRef<str> {
-        unimplemented!()
+        diesel::delete(words::table.filter(word.eq(_word.as_ref()).and(language_id.eq(&self.language_id))))
+            .execute(self.session())
+            .expect("Error deleting word");
     }
 
     /// Check if given word exists at this dictionary.
