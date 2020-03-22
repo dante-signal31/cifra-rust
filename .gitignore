@@ -5,3 +5,9 @@ Cargo.lock
 /.idea/cifra-rust.iml
 /.idea/modules.xml
 /.idea/vcs.xml
+/.env
+/.idea/dataSources/941d627e-a629-481b-8ade-456d925fd179.xml
+/cifra_database.sqlite
+/.idea/dataSources.local.xml
+/.idea/dataSources.xml
+/.idea/sqldialects.xml

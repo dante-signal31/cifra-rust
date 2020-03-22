@@ -16,6 +16,7 @@ use crate::schema::languages::dsl::*;
 use crate::schema::words;
 use crate::schema::words::dsl::*;
 use diesel::result::Error::DatabaseError;
+use regex::Regex;
 
 
 /// Cifra stores word dictionaries in a local database. This class
@@ -51,7 +52,11 @@ impl Dictionary {
     /// # Returns:
     /// * A list with names of dictionaries present at database.
     pub fn get_dictionaries_names()-> Vec<String> {
-        unimplemented!();
+        let database = Database::new();
+        let dictionaries_names = languages::table.select(languages::language)
+            .load::<String>(&database.session)
+            .expect("Language list could not be retrieved.");
+        dictionaries_names
     }
 
     /// # Parameters:
@@ -208,7 +213,14 @@ pub fn get_words_from_text_file<T>(file_pathname: T) -> HashSet<String>
 /// A set of words normalized to lowercase and without any punctuation mark.
 pub fn get_words_from_text<T>(text: T)-> HashSet<String>
     where T: AsRef<str> {
-    unimplemented!()
+    let lowercase_text = text.as_ref().to_lowercase();
+    let re = Regex::new(r"[^\W\d_]+")
+        .expect("Invalid regex to search for normalized words.");
+    let mut words_set: HashSet<String> = HashSet::new();
+    for _word in re.find_iter(&lowercase_text) {
+        words_set.insert(_word.as_str().to_string());
+    }
+    words_set
 }
 
 /// Language selected as more likely to be the one the message is written into.
@@ -296,6 +308,7 @@ mod tests {
     /// This way cargo test run every test sequentially and there is no data race.
     use super::*;
     use std::fs::{create_dir, File, OpenOptions};
+    use std::env;
     use test_common::fs::ops::{copy_files};
     use test_common::fs::tmp::TestEnvironment;
     use test_common::system::env::TemporalEnvironmentVariable;
@@ -307,7 +320,7 @@ mod tests {
 
 
     const TEXT_FILE_NAME: &'static str = "text_to_load.txt";
-    const ENGLISH_TEXT_WITHOUT_PUNCTUATIONS_MARKS: &'static str = "his eBook is for the use of anyone anywhere at no cost and with
+    const ENGLISH_TEXT_WITHOUT_PUNCTUATIONS_MARKS: &'static str = "This eBook is for the use of anyone anywhere at no cost and with
 almost no restrictions whatsoever You may copy it give it away or
 re use it under the terms of the Project Gutenberg License included
 with this eBook or online at";
@@ -389,12 +402,16 @@ nahm.";
     impl LoadedDictionaries {
         pub fn new()-> Self {
             let (temp_env, temp_env_var) = temporary_database_folder(None);
+            database::create_database();
             let temp_dir = temp_env.path().to_owned();
             let mut resources_path = temp_dir.clone();
             resources_path.push("resources");
             create_dir(&resources_path);
+            let mut source_path = env::current_dir()
+                .expect("Could not get current working dir");
+            source_path.push("resources");
             copy_files(LANGUAGES.iter()
-                .map(|x| format!("cifra-rust/tests/resources/{}_book.txt", x))
+                .map(|x| format!("{}/{}_book.txt", source_path.to_str().expect("Path contains non unicode characters"), x))
                 .collect(),
                        resources_path.as_path().as_os_str().to_str()
                            .expect("Path contains not unicode characters."))
