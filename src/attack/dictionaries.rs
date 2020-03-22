@@ -40,7 +40,10 @@ impl Dictionary {
     /// * language: Language to remove from database.
     pub fn remove_dictionary<T>(_language: T)
         where T: AsRef<str> {
-        unimplemented!();
+        let database = Database::new();
+        diesel::delete(languages::table.filter(language.eq(_language.as_ref())))
+            .execute(&database.session)
+            .expect("Error deleting language");
     }
 
     /// Get languages dictionaries present at database.
