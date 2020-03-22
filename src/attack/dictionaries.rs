@@ -110,8 +110,10 @@ impl Dictionary {
     ///
     /// # Parameters:
     /// * words: Set of words to add to dictionary.
-    pub fn add_multiple_words(&mut self, _words: HashSet<String>){
-        unimplemented!()
+    pub fn add_multiple_words(&mut self, _words: &HashSet<String>){
+        for _word in _words {
+            self.add_word(_word)
+        }
     }
 
     /// Remove given word from dictionary.
@@ -653,7 +655,7 @@ nahm.";
         let mut dictionary = Dictionary::new(_language, true)
             .expect("Error opening dictionary.");
         assert!(!micro_dictionaries[_language].iter().all(|_word| dictionary.word_exists(_word)));
-        dictionary.add_multiple_words(words_to_add);
+        dictionary.add_multiple_words(&words_to_add);
         assert!(micro_dictionaries[_language].iter().all(|_word| dictionary.word_exists(_word)));
     }
 
