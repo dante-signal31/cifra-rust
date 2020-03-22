@@ -359,12 +359,13 @@ nahm.";
     struct LoadedDictionaries {
         pub temp_dir: PathBuf,
         pub languages: Vec<String>,
-        temp_env: TestEnvironment
+        temp_env: TestEnvironment,
+        temp_env_var: TemporalEnvironmentVariable
     }
 
     impl LoadedDictionaries {
         pub fn new()-> Self {
-            let temp_env = TestEnvironment::new();
+            let (temp_env, temp_env_var) = temporary_database_folder(None);
             let temp_dir = temp_env.path().to_owned();
             let mut resources_path = temp_dir.clone();
             resources_path.push("resources");
@@ -387,7 +388,8 @@ nahm.";
             LoadedDictionaries{
                 temp_dir,
                 languages: _languages,
-                temp_env
+                temp_env,
+                temp_env_var
             }
         }
     }
@@ -492,7 +494,7 @@ nahm.";
 
     #[test]
     fn test_open_not_existing_dictionary() {
-        let temp_dir = TestEnvironment::new();
+        let (temp_dir, temp_env_database_path) = temporary_database_folder(None);
         match Dictionary::new("english", false) {
             Ok(_)=> assert!(false),
             Err(_)=> assert!(true)
@@ -579,7 +581,7 @@ nahm.";
 
     #[test]
     fn test_populate_words_from_text_files() {
-        let temp_dir = TestEnvironment::new();
+        let (temp_dir, temp_env_database_path) = temporary_database_folder(None);
         let mut temporary_text_file = TemporaryTextFile::new(temp_dir,
                                                          ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS,
                                                          ENGLISH_TEXT_WITHOUT_PUNCTUATIONS_MARKS,
