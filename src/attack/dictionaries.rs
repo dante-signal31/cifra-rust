@@ -527,6 +527,7 @@ nahm.";
     #[test]
     fn test_open_existing_dictionary() {
         let (temp_dir, temp_env_database_path) = temporary_database_folder(None);
+        database::create_database();
         // Create not existing language.
         {
             Dictionary::new("english", true);
