@@ -280,6 +280,15 @@ impl Display for NotExistingLanguage {
 
 #[cfg(test)]
 mod tests {
+    /// IMPORTANT NOTE: Diesel uses an environment variable to store its database path. These tests
+    /// set that environment variable to point to temporal folder where to store test database. Problem
+    /// is that cargo test launch test concurrently so each test changes environment variable concurrently
+    /// and you suffer data races, making your tests fail. So, to make these tests work right you
+    /// should run cargo test with this environment variable set:
+    ///
+    /// RUST_TEST_THREADS=1
+    ///
+    /// This way cargo test run every test sequentially and there is no data race.
     use super::*;
     use std::fs::{create_dir, File, OpenOptions};
     use test_common::fs::ops::{copy_files};
