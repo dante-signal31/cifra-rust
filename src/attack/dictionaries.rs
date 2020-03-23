@@ -241,7 +241,7 @@ pub fn get_words_from_text<T>(text: T)-> HashSet<String>
 pub struct IdentifiedLanguage {
     winner: Option<String>,
     winner_probability: Option<f64>,
-    candidates: HashMap<String, String>
+    candidates: HashMap<String, f64>
 }
 
 /// Identify language used to write text.
@@ -256,7 +256,23 @@ pub struct IdentifiedLanguage {
 /// * Language selected as more likely to be the one used to write text.
 pub fn identify_language<T>(text: T)-> IdentifiedLanguage
     where T: AsRef<str> {
-    unimplemented!()
+    let _words = get_words_from_text(&text);
+    let candidates = get_candidates_frecuency(&_words);
+    if let Some(winner) = get_winner(&candidates){
+        let winner_probability = *(candidates.get(winner.as_str()).unwrap());
+        IdentifiedLanguage {
+            winner: Some(winner),
+            winner_probability: Some(winner_probability),
+            candidates
+        }
+    }
+    else {
+        IdentifiedLanguage {
+            winner: None,
+            winner_probability: None,
+            candidates
+        }
+    }
 }
 
 /// Get frequency of presence of words in each language.
@@ -268,8 +284,16 @@ pub fn identify_language<T>(text: T)-> IdentifiedLanguage
 /// * Dict with all languages probabilities. Probabilities are floats
 ///    from 0 to 1. The higher the frequency of presence of words in language
 ///    the higher of this probability.
-fn get_candidates_frecuency(_words: HashSet<String>)-> HashMap<String, f64> {
-    unimplemented!()
+fn get_candidates_frecuency(_words: &HashSet<String>)-> HashMap<String, f64> {
+    let total_words = _words.len();
+    let mut candidates: HashMap<String, f64> = HashMap::new();
+    for _language in Dictionary::get_dictionaries_names() {
+        let dictionary = Dictionary::new(&_language, false)
+            .expect(format!("Error opening {} language dictionary", &_language).as_str());
+        let current_hits: u64 = _words.iter().map(|_word| if dictionary.word_exists(_word) {1} else {0}).sum();
+        candidates.insert(_language, (current_hits as f64 / total_words as f64));
+    }
+    candidates
 }
 
 /// Return candidate with highest frequency.
@@ -278,8 +302,16 @@ fn get_candidates_frecuency(_words: HashSet<String>)-> HashMap<String, f64> {
 /// * candidates: Dict with all languages probabilities. Probabilities are floats
 ///    from 0 to 1. The higher the frequency of presence of words in language
 ///    the higher of this probability
-fn get_winner(candidates: HashMap<String, f64>)-> String {
-    unimplemented!()
+fn get_winner(candidates: &HashMap<String, f64>)-> Option<String> {
+    let mut current_winner = None;
+    let mut current_highest_frequency = 0_f64;
+    for (candidate_name, frequency) in candidates {
+        if *frequency > current_highest_frequency {
+            current_winner = Some(candidate_name.clone());
+            current_highest_frequency = *frequency;
+        }
+    }
+    current_winner
 }
 
 /// Error to alarm when you try to work with a Language that has not been created yet.
