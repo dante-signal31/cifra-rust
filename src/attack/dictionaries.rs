@@ -4,6 +4,8 @@
 use std::collections::{HashSet, HashMap};
 use std::path::Path;
 use std::error::Error;
+use std::fs::File;
+use std::io::Error as IO_Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use diesel::RunQueryDsl;
@@ -17,6 +19,7 @@ use crate::schema::words;
 use crate::schema::words::dsl::*;
 use diesel::result::Error::DatabaseError;
 use regex::Regex;
+use std::io::Read;
 
 
 /// Cifra stores word dictionaries in a local database. This class
@@ -156,9 +159,11 @@ impl Dictionary {
     ///
     /// # Parameters:
     /// * file_pathname: Absolute path to file with text to analyze.
-    pub fn populate<T>(&mut self, file_pathname: T)
+    pub fn populate<T>(&mut self, file_pathname: T)-> Result<(), IO_Error>
         where T: AsRef<Path> {
-        unimplemented!()
+        let _words = get_words_from_text_file(file_pathname.as_ref())?;
+        self.add_multiple_words(&_words);
+        Ok(())
     }
 
     /// Check if a table for this instance language already exists at database or not.
@@ -196,9 +201,13 @@ impl Dictionary {
 ///
 /// # Returns:
 /// A set of words normalized to lowercase and without any punctuation mark.
-pub fn get_words_from_text_file<T>(file_pathname: T) -> HashSet<String>
+pub fn get_words_from_text_file<T>(file_pathname: T) -> Result<HashSet<String>, IO_Error>
     where T: AsRef<Path> {
-    unimplemented!()
+    let mut file_content = String::new();
+    let mut file_to_read = File::open(file_pathname.as_ref())?;
+    file_to_read.read_to_string(&mut file_content);
+    let words_set = get_words_from_text(file_content);
+    Ok(words_set)
 }
 
 /// Extract words from given text.
@@ -487,14 +496,17 @@ nahm.";
     }
 
     impl TemporaryTextFile {
-        pub fn new<T, U>(temp_dir: T, text: U, normalized_text: U, language_name: U)-> Self
+        pub fn new<T, U, V, W>(temp_dir: T, text: U, normalized_text: V, language_name: W)-> Self
             where T: AsRef<Path>,
-                  U: AsRef<str> {
+                  U: AsRef<str>,
+                  V: AsRef<str>,
+                  W: AsRef<str> {
             let mut temporary_text_file_pathname = PathBuf::from(temp_dir.as_ref().as_os_str());
             temporary_text_file_pathname.push(TEXT_FILE_NAME);
             let mut text_file = OpenOptions::new()
                                             .write(true)
                                             .create(true)
+                                            .truncate(true)
                                             .open(&temporary_text_file_pathname)
                 .expect("Error opening temporary text file for writing into it.");
             text_file.write_all(text.as_ref().as_bytes());
@@ -614,9 +626,14 @@ nahm.";
                                                         text_without_punctuation_marks,
                                                         language_name);
             let mut expected_set = HashSet::new();
-            temporary_text.normalized_text.split_ascii_whitespace().map(|_word| expected_set.insert(_word.to_string())).collect::<Vec<_>>();
-            let returned_set = get_words_from_text_file(temporary_text.temp_filename);
-            assert!(expected_set.eq(&returned_set));
+            temporary_text.normalized_text.to_lowercase().split_ascii_whitespace().map(|_word| expected_set.insert(_word.to_string())).collect::<Vec<_>>();
+            let returned_set = get_words_from_text_file(temporary_text.temp_filename)
+                .expect("Error reading text file");
+            let mut diff: Vec<String> = Vec::new();
+            for x in returned_set.symmetric_difference(&expected_set){
+                diff.push(x.clone());
+            }
+            assert_eq!(expected_set, returned_set);
         }
     }
 
