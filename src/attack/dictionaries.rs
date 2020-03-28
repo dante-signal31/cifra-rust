@@ -351,7 +351,7 @@ mod tests {
     ///
     /// This way cargo test run every test sequentially and there is no data race.
     use super::*;
-    use std::fs::{create_dir, File, OpenOptions};
+    use std::fs::{create_dir, File, OpenOptions, read_to_string};
     use std::env;
     use test_common::fs::ops::{copy_files};
     use test_common::fs::tmp::TestEnvironment;
@@ -675,17 +675,17 @@ nahm.";
     #[test]
     fn test_populate_words_from_text_files() {
         let (temp_dir, temp_env_database_path) = temporary_database_folder(None);
-        let mut temporary_text_file = TemporaryTextFile::new(temp_dir,
+        database::create_database();
+        let temporary_text_file = TemporaryTextFile::new(&temp_dir,
                                                          ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS,
                                                          ENGLISH_TEXT_WITHOUT_PUNCTUATIONS_MARKS,
                                                          "english");
-        let mut expected_set = HashSet::new();
-        let mut file_content = String::new();
-        temporary_text_file.text_file.read_to_string(&mut file_content);
-        let lowercase_content = file_content.to_lowercase();
-        lowercase_content.split_ascii_whitespace().map(|x| expected_set.insert(x)).collect::<Vec<_>>();
+        let mut expected_set: HashSet<&str> = HashSet::new();
+        let expected_file_content = temporary_text_file.normalized_text;
+        let expected_lowercase_content = expected_file_content.to_lowercase();
+        expected_lowercase_content.split_ascii_whitespace().map(|x| expected_set.insert(x)).collect::<Vec<_>>();
         {
-            let mut dictionary = Dictionary::new(&temporary_text_file.language_name, false)
+            let mut dictionary = Dictionary::new(&temporary_text_file.language_name, true)
                 .expect("Error opening dictionary");
             dictionary.populate(temporary_text_file.temp_filename.as_path());
         }
