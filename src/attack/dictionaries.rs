@@ -120,9 +120,18 @@ impl Dictionary {
     /// # Parameters:
     /// * words: Set of words to add to dictionary.
     pub fn add_multiple_words(&mut self, _words: &HashSet<String>){
-        for _word in _words {
-            self.add_word(_word)
-        }
+        let mut word_list: Vec<NewWord> = Vec::new();
+        _words.iter().map(|new_word| {
+                let word_to_add = NewWord {
+                    word: new_word,
+                    language_id: self.language_id
+                };
+                word_list.push(word_to_add);
+            }).collect::<Vec<_>>();
+        diesel::insert_into(words::table)
+            .values(&word_list)
+            .execute(self.session())
+            .expect("Error saving new word.");
     }
 
     /// Remove given word from dictionary.
