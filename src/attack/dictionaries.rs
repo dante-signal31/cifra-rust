@@ -77,17 +77,18 @@ impl Dictionary {
             language_id: 0,
             database:current_database
         };
-        if !current_dictionary.already_created() {
+        if current_dictionary.already_created() {
+            current_dictionary.language_id = languages::table.filter(language.eq(&current_dictionary.language))
+                .select(languages::id)
+                .first::<i32>(current_dictionary.session())
+                .expect("Language that does not exists in database yet.");
+        } else {
             if create {
                 current_dictionary.create_dictionary();
             } else {
                  return Err(NotExistingLanguage::new(&_language))
             }
         }
-        current_dictionary.language_id = languages::table.filter(language.eq(&current_dictionary.language))
-            .select(languages::id)
-            .first::<i32>(current_dictionary.session())
-            .expect("Language that does not exists in database yet.");
         Ok(current_dictionary)
     }
 
@@ -146,6 +147,7 @@ impl Dictionary {
     /// True if word is already present at dictionary, False otherwise.
     pub fn word_exists<T>(&self, _word: T) -> bool
         where T: AsRef<str> {
+        let _word_clone = _word.as_ref().clone();
         if let Ok(count) = words::table.filter(word.eq(_word.as_ref()).and(language_id.eq(&self.language_id)))
             .count()
             .first::<i64>(self.session()) {
@@ -291,7 +293,8 @@ fn get_candidates_frecuency(_words: &HashSet<String>)-> HashMap<String, f64> {
         let dictionary = Dictionary::new(&_language, false)
             .expect(format!("Error opening {} language dictionary", &_language).as_str());
         let current_hits: u64 = _words.iter().map(|_word| if dictionary.word_exists(_word) {1} else {0}).sum();
-        candidates.insert(_language, (current_hits as f64 / total_words as f64));
+        let frequency = current_hits as f64 / total_words as f64;
+        candidates.insert(_language, (frequency));
     }
     candidates
 }
@@ -731,10 +734,10 @@ nahm.";
         let loaded_dictionaries = LoadedDictionaries::new();
         let test_cases = vec![(ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS, "english"),
                               (SPANISH_TEXT_WITH_PUNCTUATIONS_MARKS, "spanish")];
-        for (text, _language) in test_cases{
+        for (text, expected_language) in test_cases{
             let identified_language = identify_language(text);
             if let Some(winner) = identified_language.winner {
-                assert_eq!(winner, _language, "Language not correctly identified.");
+                assert_eq!(winner, expected_language, "Language not correctly identified.");
             } else {
                 assert!(false, "Language not identified")
             }
