@@ -350,7 +350,7 @@ impl Display for NotExistingLanguage {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     /// IMPORTANT NOTE: Diesel uses an environment variable to store its database path. These tests
     /// set that environment variable to point to temporal folder where to store test database. Problem
     /// is that cargo test launch test concurrently so each test changes environment variable concurrently
@@ -446,7 +446,7 @@ nahm.";
     const LANGUAGES: [&'static str; 4] = ["english", "spanish", "french", "german"];
 
     /// Class with info to use a temporary dictionaries database.
-    struct LoadedDictionaries {
+    pub struct LoadedDictionaries {
         pub temp_dir: PathBuf,
         pub languages: Vec<String>,
         temp_env: TestEnvironment,

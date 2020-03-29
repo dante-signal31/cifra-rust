@@ -17,7 +17,7 @@ use crate::attack::dictionaries::IdentifiedLanguage;
 ///
 /// # Returns:
 /// * Caesar key found.
-pub fn brute_force_caesar<T, U>(ciphered_text: T, charset: U)-> u8
+pub fn brute_force_caesar<T, U>(ciphered_text: T, charset: U)-> usize
     where T: AsRef<str>,
           U: AsRef<str> {
     unimplemented!()
@@ -41,7 +41,7 @@ pub fn brute_force_caesar<T, U>(ciphered_text: T, charset: U)-> u8
 ///
 /// # Returns:
 /// * Caesar key found.
-pub fn brute_force_caesar_mp<T,U>(ciphered_text: T, charset: U)-> u8
+pub fn brute_force_caesar_mp<T,U>(ciphered_text: T, charset: U)-> usize
     where T: AsRef<str>,
           U: AsRef<str> {
     unimplemented!()
@@ -59,7 +59,7 @@ pub fn brute_force_caesar_mp<T,U>(ciphered_text: T, charset: U)-> u8
 ///
 /// # Returns:
 /// * A tuple with used key ans An *IdentifiedLanguage* object with assessment result.
-fn assess_caesar_key<T,U>(ciphered_text: T, key: u8, charset: U)-> (u8, IdentifiedLanguage)
+fn assess_caesar_key<T,U>(ciphered_text: T, key: usize, charset: U)-> (usize, IdentifiedLanguage)
     where T: AsRef<str>,
           U: AsRef<str> {
     unimplemented!()
@@ -72,7 +72,7 @@ fn assess_caesar_key<T,U>(ciphered_text: T, key: u8, charset: U)-> (u8, Identifi
 ///
 /// # Returns:
 /// * Caesar key whose IdentifiedLanguage object got the highest probability.
-fn get_best_result(identified_language: Vec<(u8, IdentifiedLanguage)>)-> u8 {
+fn get_best_result(identified_language: Vec<(usize, IdentifiedLanguage)>)-> usize {
     unimplemented!()
 }
 
@@ -80,18 +80,36 @@ fn get_best_result(identified_language: Vec<(u8, IdentifiedLanguage)>)-> u8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Instant;
+    use crate::attack::dictionaries::tests::LoadedDictionaries;
+    use crate::cipher::caesar::{DEFAULT_CHARSET, decipher};
+    use diesel::result::Error::DatabaseError;
 
     const ORIGINAL_MESSAGE: &'static str = "This is my secret message.";
     const CIPHERED_MESSAGE_KEY_13: &'static str = "Guvf vf zl frperg zrffntr.";
-    const TEST_KEY: u8 = 13;
+    const TEST_KEY: usize = 13;
     
     #[test]
     fn test_brute_force_caesar() {
-        unimplemented!()
+        let loaded_dictionaries = LoadedDictionaries::new();
+        let timer = Instant::now();
+        let found_key = brute_force_caesar(CIPHERED_MESSAGE_KEY_13, DEFAULT_CHARSET);
+        assert_found_key(found_key);
+        println!("{}", format!("\n\nElapsed time with test_brute_force_caesar: {:.2} seconds.", timer.elapsed().as_secs_f64()));
     }
 
     #[test]
     fn test_brute_force_caesar_mp() {
-        unimplemented!()
+        let loaded_dictionaries = LoadedDictionaries::new();
+        let timer = Instant::now();
+        let found_key = brute_force_caesar_mp(CIPHERED_MESSAGE_KEY_13, DEFAULT_CHARSET);
+        assert_found_key(found_key);
+        println!("{}", format!("\n\nElapsed time with test_brute_force_caesar_mp: {:.2} seconds.", timer.elapsed().as_secs_f64()));
+    }
+
+    fn assert_found_key(found_key: usize){
+        assert_eq!(TEST_KEY, found_key);
+        let deciphered_key = decipher(CIPHERED_MESSAGE_KEY_13, found_key, DEFAULT_CHARSET);
+        assert_eq!(ORIGINAL_MESSAGE, deciphered_key);
     }
 }

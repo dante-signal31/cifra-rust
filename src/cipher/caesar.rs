@@ -1,7 +1,7 @@
 use std::ops::Add;
 
 /// Library to cipher and decipher texts using Caesar method.
-const DEFAULT_CHARSET: &str = "abcdefghijklmnopqrstuvwxyz";
+pub const DEFAULT_CHARSET: &str = "abcdefghijklmnopqrstuvwxyz";
 
 
 /// Cipher given text using Caesar method.
