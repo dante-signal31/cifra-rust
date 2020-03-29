@@ -1,4 +1,5 @@
-use crate::attack::dictionaries::IdentifiedLanguage;
+use crate::attack::dictionaries::{IdentifiedLanguage, identify_language};
+use crate::cipher::caesar::{DEFAULT_CHARSET, decipher};
 
 /// Get Caesar ciphered text key.
 ///
@@ -20,7 +21,13 @@ use crate::attack::dictionaries::IdentifiedLanguage;
 pub fn brute_force_caesar<T, U>(ciphered_text: T, charset: U)-> usize
     where T: AsRef<str>,
           U: AsRef<str> {
-    unimplemented!()
+    let key_space_length = charset.as_ref().len();
+    let mut results: Vec<(usize, IdentifiedLanguage)> = Vec::new();
+    for key in 0..key_space_length {
+       results.push(assess_caesar_key(&ciphered_text, key, &charset));
+    };
+    let best_key = get_best_result(&results);
+    best_key
 }
 
 /// Get Caesar ciphered text key.
@@ -62,7 +69,9 @@ pub fn brute_force_caesar_mp<T,U>(ciphered_text: T, charset: U)-> usize
 fn assess_caesar_key<T,U>(ciphered_text: T, key: usize, charset: U)-> (usize, IdentifiedLanguage)
     where T: AsRef<str>,
           U: AsRef<str> {
-    unimplemented!()
+    let deciphered_text = decipher(&ciphered_text, key, &charset);
+    let identified_language = identify_language(&deciphered_text);
+    (key, identified_language)
 }
 
 /// Assess a list of IdentifiedLanguage objects and select the most likely.
@@ -72,8 +81,22 @@ fn assess_caesar_key<T,U>(ciphered_text: T, key: usize, charset: U)-> (usize, Id
 ///
 /// # Returns:
 /// * Caesar key whose IdentifiedLanguage object got the highest probability.
-fn get_best_result(identified_language: Vec<(usize, IdentifiedLanguage)>)-> usize {
-    unimplemented!()
+fn get_best_result(identified_languages: &Vec<(usize, IdentifiedLanguage)>)-> usize {
+    let mut current_best_key: usize = 0;
+    let mut current_best_probability: f64 = 0.0;
+    for (caesar_key, identified_language) in identified_languages {
+        if identified_language.winner == None {
+            continue;
+        } else {
+            if let Some(winner_probability) = identified_language.winner_probability {
+                if winner_probability > current_best_probability {
+                    current_best_key = *caesar_key;
+                    current_best_probability = winner_probability;
+                }
+            }
+        }
+    };
+    current_best_key
 }
 
 
@@ -108,8 +131,8 @@ mod tests {
     }
 
     fn assert_found_key(found_key: usize){
-        assert_eq!(TEST_KEY, found_key);
+        assert_eq!(found_key, TEST_KEY);
         let deciphered_key = decipher(CIPHERED_MESSAGE_KEY_13, found_key, DEFAULT_CHARSET);
-        assert_eq!(ORIGINAL_MESSAGE, deciphered_key);
+        assert_eq!( deciphered_key, ORIGINAL_MESSAGE);
     }
 }

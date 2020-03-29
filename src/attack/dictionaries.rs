@@ -251,8 +251,8 @@ pub fn get_words_from_text<T>(text: T)-> HashSet<String>
 /// * winner_probability: Probability this language is actually de right one. If None the no proper language was found.
 /// * candidates: Dict with all languages probabilities. Probabilities are floats from 0 to 1.
 pub struct IdentifiedLanguage {
-    winner: Option<String>,
-    winner_probability: Option<f64>,
+    pub(crate) winner: Option<String>,
+    pub(crate) winner_probability: Option<f64>,
     candidates: HashMap<String, f64>
 }
 
