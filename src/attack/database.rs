@@ -25,8 +25,8 @@ const DATABASE_STANDARD_PATH: &'static str = "~/.cifra/cifra_database.sqlite";
 /// with default value stored at *DATABASE_STANDARD_PATH*, but notifies that situations
 /// returning a VarError.
 ///
-/// Returns:
-/// Environment value if DEFAULT_URL exists and a VarError if not.
+/// # Returns:
+/// * Environment value if DEFAULT_URL exists and a VarError if not.
 fn check_database_url_env_var_exists()-> Result<String, VarError>{
     return match env::var(DATABASE_ENV_VAR) {
         Ok(var_value) => Ok(var_value),
