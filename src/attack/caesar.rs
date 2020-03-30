@@ -7,7 +7,7 @@ use crate::cipher::caesar::{DEFAULT_CHARSET, decipher};
 ///
 /// Uses a brute force technique trying the entire key space until finding a text
 /// that can be identified with any of our languages.
-/// **You should not use this function. Use *brute_force_caesar_mp* instead.** This
+/// **You should not use this function. Use *brute_force_mp* instead.** This
 /// function is slower than *mp* one because is sequential while the other uses a
 /// multiprocessing approach. This function only stay here to allow comparisons
 /// between sequential and multiprocessing approaches.
@@ -20,7 +20,7 @@ use crate::cipher::caesar::{DEFAULT_CHARSET, decipher};
 ///
 /// # Returns:
 /// * Caesar key found.
-pub fn brute_force_caesar<T, U>(ciphered_text: T, charset: U)-> usize
+pub fn brute_force<T, U>(ciphered_text: T, charset: U) -> usize
     where T: AsRef<str>,
           U: AsRef<str> {
     let key_space_length = charset.as_ref().len();
@@ -37,9 +37,9 @@ pub fn brute_force_caesar<T, U>(ciphered_text: T, charset: U)-> usize
 /// Uses a brute force technique trying the entire key space until finding a text
 /// that can be identified with any of our languages.
 ///
-/// **You should use this function instead of *brute_force_caesar*.**
+/// **You should use this function instead of *brute_caesar*.**
 ///
-/// Whereas *brute_force_caesar* uses a sequential approach, this function uses
+/// Whereas *brute_caesar* uses a sequential approach, this function uses
 /// multiprocessing to improve performance.
 ///
 /// # Parameters:
@@ -50,7 +50,7 @@ pub fn brute_force_caesar<T, U>(ciphered_text: T, charset: U)-> usize
 ///
 /// # Returns:
 /// * Caesar key found.
-pub fn brute_force_caesar_mp<T,U>(ciphered_text: T, charset: U)-> usize
+pub fn brute_force_mp<T,U>(ciphered_text: T, charset: U) -> usize
     where T: AsRef<str> + std::marker::Sync,
           U: AsRef<str> + std::marker::Sync {
     let key_space_length = charset.as_ref().len();
@@ -124,7 +124,7 @@ mod tests {
     fn test_brute_force_caesar() {
         let loaded_dictionaries = LoadedDictionaries::new();
         let timer = Instant::now();
-        let found_key = brute_force_caesar(CIPHERED_MESSAGE_KEY_13, DEFAULT_CHARSET);
+        let found_key = brute_force(CIPHERED_MESSAGE_KEY_13, DEFAULT_CHARSET);
         assert_found_key(found_key);
         println!("{}", format!("\n\nElapsed time with test_brute_force_caesar: {:.2} seconds.", timer.elapsed().as_secs_f64()));
     }
@@ -133,7 +133,7 @@ mod tests {
     fn test_brute_force_caesar_mp() {
         let loaded_dictionaries = LoadedDictionaries::new();
         let timer = Instant::now();
-        let found_key = brute_force_caesar_mp(CIPHERED_MESSAGE_KEY_13, DEFAULT_CHARSET);
+        let found_key = brute_force_mp(CIPHERED_MESSAGE_KEY_13, DEFAULT_CHARSET);
         assert_found_key(found_key);
         println!("{}", format!("\n\nElapsed time with test_brute_force_caesar_mp: {:.2} seconds.", timer.elapsed().as_secs_f64()));
     }
