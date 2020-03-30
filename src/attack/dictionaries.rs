@@ -21,7 +21,6 @@ use diesel::result::Error::DatabaseError;
 use regex::Regex;
 use std::io::Read;
 
-/// TODO: Look for any except() in code and think if its better return a Result in that function.
 
 /// Cifra stores word dictionaries in a local database. This class
 /// is a wrapper to not to deal directly with that database.
