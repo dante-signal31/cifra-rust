@@ -1,3 +1,5 @@
+use rayon::prelude::*;
+
 use crate::attack::dictionaries::{IdentifiedLanguage, identify_language};
 use crate::cipher::caesar::{DEFAULT_CHARSET, decipher};
 
@@ -49,9 +51,15 @@ pub fn brute_force_caesar<T, U>(ciphered_text: T, charset: U)-> usize
 /// # Returns:
 /// * Caesar key found.
 pub fn brute_force_caesar_mp<T,U>(ciphered_text: T, charset: U)-> usize
-    where T: AsRef<str>,
-          U: AsRef<str> {
-    unimplemented!()
+    where T: AsRef<str> + std::marker::Sync,
+          U: AsRef<str> + std::marker::Sync {
+    let key_space_length = charset.as_ref().len();
+    let keys_to_try: Vec<usize> = (0..key_space_length).collect();
+    let results = keys_to_try.par_iter()
+        .map(|&key| assess_caesar_key(&ciphered_text, key, &charset))
+        .collect();
+    let best_key = get_best_result(&results);
+    best_key
 }
 
 /// Decipher text with given key and try to find out if returned text can be identified with any
@@ -65,7 +73,7 @@ pub fn brute_force_caesar_mp<T,U>(ciphered_text: T, charset: U)-> usize
 ///     recovered.
 ///
 /// # Returns:
-/// * A tuple with used key ans An *IdentifiedLanguage* object with assessment result.
+/// * A tuple with used key and an *IdentifiedLanguage* object with assessment result.
 fn assess_caesar_key<T,U>(ciphered_text: T, key: usize, charset: U)-> (usize, IdentifiedLanguage)
     where T: AsRef<str>,
           U: AsRef<str> {

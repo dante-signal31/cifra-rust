@@ -217,7 +217,7 @@ pub fn get_words_from_text_file<T>(file_pathname: T) -> Result<HashSet<String>, 
     where T: AsRef<Path> {
     let mut file_content = String::new();
     let mut file_to_read = File::open(file_pathname.as_ref())?;
-    file_to_read.read_to_string(&mut file_content);
+    file_to_read.read_to_string(&mut file_content)?;
     let words_set = get_words_from_text(file_content);
     Ok(words_set)
 }
@@ -304,7 +304,7 @@ fn get_candidates_frecuency(_words: &HashSet<String>)-> HashMap<String, f64> {
             .expect(format!("Error opening {} language dictionary", &_language).as_str());
         let current_hits: u64 = _words.iter().map(|_word| if dictionary.word_exists(_word) {1} else {0}).sum();
         let frequency = current_hits as f64 / total_words as f64;
-        candidates.insert(_language, (frequency));
+        candidates.insert(_language, frequency);
     }
     candidates
 }
