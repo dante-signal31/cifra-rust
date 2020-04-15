@@ -1,6 +1,6 @@
-
-
 /// Library to cipher and decipher texts using transposition method.
+
+use crate::attack::simple_attacks::Parameters;
 
 type TranspositionMatrix = Vec<Vec<Option<char>>>;
 
@@ -30,6 +30,25 @@ pub fn decipher<T>(ciphered_text: T, key: usize)-> String
     where T: AsRef<str> {
     let deciphered_text = transpose_text(&ciphered_text, key, false);
     deciphered_text
+}
+
+/// Call decipher function using a Parameters type.
+///
+/// You probably wont use this function. It's used by brute force attacks instead.
+///
+/// # Parameters:
+/// * parameters: Parameters stored in a Parameters type. It should include next keys-values:
+///     * ciphered_text (str): Text to be deciphered.
+///     * key (usize): Secret key. In Caesar method, and for deciphering end, it correspond
+///         with how many position get bat in the charset. Both ends should know this and
+///         use the same one.
+///
+/// # Returns:
+/// * Deciphered text.
+pub fn decipher_par(parameters: &Parameters)-> String {
+    let ciphered_text = parameters.get_str("ciphered_text");
+    let key = parameters.get_int("key");
+    decipher(ciphered_text, key)
 }
 
 /// Transpose given text.

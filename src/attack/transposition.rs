@@ -4,7 +4,10 @@
 /// a text using Transposition algorithm.
 
 use crate::attack::dictionaries::IdentifiedLanguage;
-use crate::attack::simple_attacks::Parameters;
+use crate::attack::simple_attacks::{Parameters, assess_key};
+use crate::attack::simple_attacks::brute_force as simple_brute_force;
+use crate::attack::simple_attacks::brute_force_mp as simple_brute_force_mp;
+use crate::cipher::transposition::decipher_par;
 
 /// Get Transposition ciphered text key.
 ///
@@ -23,7 +26,8 @@ use crate::attack::simple_attacks::Parameters;
 /// * Transposition key found.
 pub fn brute_force<T>(ciphered_text: T)-> usize
     where T: AsRef<str> {
-    unimplemented!()
+    let mut parameters = create_parameters(ciphered_text);
+    simple_brute_force(assess_transposition_key, &mut parameters)
 }
 
 /// Get Transposition ciphered text key.
@@ -43,7 +47,26 @@ pub fn brute_force<T>(ciphered_text: T)-> usize
 /// * Transposition key found.
 pub fn brute_force_mp<T>(ciphered_text: T)-> usize
     where T: AsRef<str> {
-    unimplemented!()
+    let mut parameters = create_parameters(ciphered_text);
+    simple_brute_force_mp(assess_transposition_key, &mut parameters)
+}
+
+/// Get a Parameters type with given arguments.
+///
+/// # Parameters:
+/// * ciphered_text: Text to be deciphered.
+///
+/// # Returns:
+/// * A Parameters type with next key-values:
+///     * ciphered_text: Text to be deciphered.
+///     * key_space_length: Key space length of cipher to crack.
+fn create_parameters<T>(ciphered_text: T)-> Parameters
+    where T: AsRef<str> {
+    let key_space_length = ciphered_text.as_ref().len();
+    let mut parameters = Parameters::new();
+    parameters.insert_str("ciphered_text", ciphered_text.as_ref());
+    parameters. insert_int("key_space_length", key_space_length);
+    parameters
 }
 
 /// Decipher text with given key and try to find out if returned text can be identified with any
@@ -57,7 +80,43 @@ pub fn brute_force_mp<T>(ciphered_text: T)-> usize
 /// # Returns:
 /// * A tuple with used key ans An *IdentifiedLanguage* object with assessment result.
 fn assess_transposition_key(parameters: &Parameters)-> (usize, IdentifiedLanguage){
-    unimplemented!()
+    assess_key(decipher_par, parameters)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Instant;
+    use crate::attack::dictionaries::tests::LoadedDictionaries;
+    use crate::cipher::transposition::decipher;
+
+    const ORIGINAL_MESSAGE: &str = "Common sense is not so common.";
+    const CIPHERED_MESSAGE_KEY_8: &str = "Cenoonommstmme oo snnio. s s c";
+    const TEST_KEY: usize = 8;
+
+    #[test]
+    fn test_brute_force_transposition() {
+        let loaded_dictionaries = LoadedDictionaries::new();
+        let timer = Instant::now();
+        let found_key = brute_force(CIPHERED_MESSAGE_KEY_8);
+        assert_found_key(found_key);
+        println!("{}", format!("\n\nElapsed time with test_brute_force_transposition: {:.2} seconds.", timer.elapsed().as_secs_f64()));
+    }
+
+    #[test]
+    fn test_brute_force_transposition_mp() {
+        let loaded_dictionaries = LoadedDictionaries::new();
+        let timer = Instant::now();
+        let found_key = brute_force_mp(CIPHERED_MESSAGE_KEY_8);
+        assert_found_key(found_key);
+        println!("{}", format!("\n\nElapsed time with test_brute_force_transposition_mp: {:.2} seconds.", timer.elapsed().as_secs_f64()));
+    }
+
+    fn assert_found_key(found_key: usize){
+        assert_eq!(found_key, TEST_KEY);
+        let deciphered_key = decipher(CIPHERED_MESSAGE_KEY_8, found_key);
+        assert_eq!( deciphered_key, ORIGINAL_MESSAGE);
+    }
 }
 
 

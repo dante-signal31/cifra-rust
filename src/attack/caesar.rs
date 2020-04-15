@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rayon::prelude::*;
+// use rayon::prelude::*;
 
 use crate::attack::dictionaries::{IdentifiedLanguage, identify_language};
 use crate::attack::simple_attacks::brute_force as simple_brute_force;
