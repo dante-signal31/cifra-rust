@@ -29,11 +29,7 @@ use crate::cipher::caesar::{DEFAULT_CHARSET, decipher_par};
 pub fn brute_force<T, U>(ciphered_text: T, charset: U) -> usize
     where T: AsRef<str>,
           U: AsRef<str> {
-    let key_space_length = charset.as_ref().len();
-    let mut parameters: Parameters = Parameters::new();
-    parameters.insert_str("ciphered_text", ciphered_text);
-    parameters.insert_str("charset", charset);
-    parameters.insert_int("key_space_length", key_space_length);
+    let mut parameters = create_parameters(ciphered_text, charset);
     simple_brute_force(assess_caesar_key, &mut parameters)
 }
 
@@ -58,12 +54,34 @@ pub fn brute_force<T, U>(ciphered_text: T, charset: U) -> usize
 pub fn brute_force_mp<T,U>(ciphered_text: T, charset: U) -> usize
     where T: AsRef<str> + std::marker::Sync,
           U: AsRef<str> + std::marker::Sync {
+    let mut parameters = create_parameters(ciphered_text, charset);
+    simple_brute_force_mp(assess_caesar_key, &mut parameters)
+}
+
+/// Get a Parameters type with given arguments.
+///
+/// # Parameters:
+/// * ciphered_text: Text to be deciphered.
+/// * charset: Charset used for Caesar method substitution. Both ends, ciphering
+///     and deciphering, should use the same charset or original text won't be properly
+///     recovered.
+///
+/// # Returns:
+/// * A Parameters type with next key-values:
+///     * ciphered_text: Text to be deciphered.
+///     * charset: Charset used for Caesar method substitution. Both ends, ciphering
+///         and deciphering, should use the same charset or original text won't be properly
+///         recovered.
+///     * key_space_length: Key space length of cipher to crack.
+fn create_parameters<T,U>(ciphered_text: T, charset: U) -> Parameters
+    where T: AsRef<str>,
+          U: AsRef<str> {
     let key_space_length = charset.as_ref().len();
     let mut parameters: Parameters = Parameters::new();
     parameters.insert_str("ciphered_text", ciphered_text);
     parameters.insert_str("charset", charset);
     parameters.insert_int("key_space_length", key_space_length);
-    simple_brute_force_mp(assess_caesar_key, &mut parameters)
+    parameters
 }
 
 /// Decipher text with given key and try to find out if returned text can be identified with any
