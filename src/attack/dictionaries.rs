@@ -326,6 +326,29 @@ fn get_winner(candidates: &HashMap<String, f64>)-> Option<String> {
     current_winner
 }
 
+/// Assess a list of IdentifiedLanguage objects and select the most likely.
+///
+/// # Parameters:
+/// * identified_languages: A list of tuples with a Caesar key and its corresponding IdentifiedLanguage object.
+///
+/// # Returns:
+/// * Key whose IdentifiedLanguage object got the highest probability.
+pub fn get_best_result(identified_languages: &Vec<(usize, IdentifiedLanguage)>)-> usize {
+    let mut current_best_key: usize = 0;
+    let mut current_best_key_probability: f64 = 0.0;
+    for (current_key, identified_language) in identified_languages {
+        if let Some(_) = identified_language.winner {
+            if let Some(winner_probability) = identified_language.winner_probability {
+                if winner_probability > current_best_key_probability {
+                    current_best_key = *current_key;
+                    current_best_key_probability = winner_probability;
+                }
+            }
+        }
+    }
+    current_best_key
+}
+
 /// Error to alarm when you try to work with a Language that has not been created yet.
 #[derive(Debug)]
 pub struct NotExistingLanguage {

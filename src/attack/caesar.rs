@@ -1,7 +1,13 @@
+use std::collections::HashMap;
+
 use rayon::prelude::*;
 
 use crate::attack::dictionaries::{IdentifiedLanguage, identify_language};
-use crate::cipher::caesar::{DEFAULT_CHARSET, decipher};
+use crate::attack::simple_attacks::brute_force as simple_brute_force;
+use crate::attack::simple_attacks::brute_force_mp as simple_brute_force_mp;
+use crate::attack::simple_attacks::{assess_key, Parameters, ParameterValue};
+use crate::cipher::caesar::{DEFAULT_CHARSET, decipher_par};
+
 
 /// Get Caesar ciphered text key.
 ///
@@ -24,12 +30,11 @@ pub fn brute_force<T, U>(ciphered_text: T, charset: U) -> usize
     where T: AsRef<str>,
           U: AsRef<str> {
     let key_space_length = charset.as_ref().len();
-    let mut results: Vec<(usize, IdentifiedLanguage)> = Vec::new();
-    for key in 0..key_space_length {
-       results.push(assess_caesar_key(&ciphered_text, key, &charset));
-    };
-    let best_key = get_best_result(&results);
-    best_key
+    let mut parameters: Parameters = Parameters::new();
+    parameters.insert_str("ciphered_text", ciphered_text);
+    parameters.insert_str("charset", charset);
+    parameters.insert_int("key_space_length", key_space_length);
+    simple_brute_force(assess_caesar_key, &mut parameters)
 }
 
 /// Get Caesar ciphered text key.
@@ -53,33 +58,43 @@ pub fn brute_force<T, U>(ciphered_text: T, charset: U) -> usize
 pub fn brute_force_mp<T,U>(ciphered_text: T, charset: U) -> usize
     where T: AsRef<str> + std::marker::Sync,
           U: AsRef<str> + std::marker::Sync {
+    // let key_space_length = charset.as_ref().len();
+    // let keys_to_try: Vec<usize> = (0..key_space_length).collect();
+    // let mut parameters: Parameters = Parameters::new();
+    // parameters.insert_str("ciphered_text", ciphered_text);
+    // parameters.insert_str("charset", charset);
+    // let results = keys_to_try.par_iter()
+    //     .map(|&key| {
+    //         let mut process_parameters = parameters.clone();
+    //         process_parameters.insert_int("key", key);
+    //         assess_caesar_key(&parameters)
+    //     })
+    //     .collect();
+    // let best_key = get_best_result(&results);
+    // best_key
     let key_space_length = charset.as_ref().len();
-    let keys_to_try: Vec<usize> = (0..key_space_length).collect();
-    let results = keys_to_try.par_iter()
-        .map(|&key| assess_caesar_key(&ciphered_text, key, &charset))
-        .collect();
-    let best_key = get_best_result(&results);
-    best_key
+    let mut parameters: Parameters = Parameters::new();
+    parameters.insert_str("ciphered_text", ciphered_text);
+    parameters.insert_str("charset", charset);
+    parameters.insert_int("key_space_length", key_space_length);
+    simple_brute_force_mp(assess_caesar_key, &mut parameters)
 }
 
 /// Decipher text with given key and try to find out if returned text can be identified with any
 /// language in our dictionaries.
 ///
 /// # Parameters:
-/// * ciphered_text: Text to be deciphered.
-/// * key: Key to decipher *ciphered_text*.
-/// * charset: Charset used for Caesar method substitution. Both ends, ciphering
-///     and deciphering, should use the same charset or original text won't be properly
-///     recovered.
+/// * A Parameters type with these keys-values.
+///     - ciphered_text (str) : Text to be deciphered.
+///     - key (usize): Key to decipher *ciphered_text*.
+///     - charset (str): Charset used for Caesar method substitution. Both ends, ciphering
+///         and deciphering, should use the same charset or original text won't be properly
+///         recovered.
 ///
 /// # Returns:
 /// * A tuple with used key and an *IdentifiedLanguage* object with assessment result.
-fn assess_caesar_key<T,U>(ciphered_text: T, key: usize, charset: U)-> (usize, IdentifiedLanguage)
-    where T: AsRef<str>,
-          U: AsRef<str> {
-    let deciphered_text = decipher(&ciphered_text, key, &charset);
-    let identified_language = identify_language(&deciphered_text);
-    (key, identified_language)
+fn assess_caesar_key(parameters: &Parameters)-> (usize, IdentifiedLanguage) {
+    assess_key(decipher_par, parameters)
 }
 
 /// Assess a list of IdentifiedLanguage objects and select the most likely.

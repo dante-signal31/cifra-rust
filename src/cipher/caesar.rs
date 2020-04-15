@@ -1,5 +1,7 @@
 use std::ops::Add;
 
+use crate::attack::simple_attacks::{Parameters, ParameterValue};
+
 /// Library to cipher and decipher texts using Caesar method.
 pub const DEFAULT_CHARSET: &str = "abcdefghijklmnopqrstuvwxyz";
 
@@ -45,10 +47,35 @@ pub fn cipher<T, U>(text: T, key: usize, charset: U)-> String
 pub fn decipher<T, U>(ciphered_text: T, key: usize, charset: U)-> String
     where T: AsRef<str>,
           U: AsRef<str> {
+// pub fn decipher(parameters: &Parameters)-> String {
+//     let ciphered_text = parameters.get_str("ciphered_text");
+//     let charset = parameters.get_str("charset");
+//     let key = parameters.get_int("key");
     let deciphered_text = offset_text(ciphered_text, key, false, charset);
     deciphered_text
 }
 
+/// Call decipher function using a Parameters type.
+///
+/// You probably wont use this function. It's used by brute force attacks instead.
+///
+/// # Parameters:
+/// * parameters: Parameters stored in a Parameters type. It should include next keys-values:
+///     * ciphered_text (str): Text to be deciphered.
+///     * key (usize): Secret key. In Caesar method, and for deciphering end, it correspond
+///         with how many position get bat in the charset. Both ends should know this and
+///         use the same one.
+///     * charset (str): Charset used for Caesar method substitutions. Both end should
+///         use the same charset or original text won't be properly recovered.
+///
+/// # Returns:
+/// * Deciphered text.
+pub fn decipher_par(parameters: &Parameters)-> String {
+    let ciphered_text = parameters.get_str("ciphered_text");
+    let charset = parameters.get_str("charset");
+    let key = parameters.get_int("key");
+    decipher(ciphered_text, key, charset)
+}
 
 /// Generic function to offset text characters frontwards and backwards.
 ///
