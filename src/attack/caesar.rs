@@ -58,20 +58,6 @@ pub fn brute_force<T, U>(ciphered_text: T, charset: U) -> usize
 pub fn brute_force_mp<T,U>(ciphered_text: T, charset: U) -> usize
     where T: AsRef<str> + std::marker::Sync,
           U: AsRef<str> + std::marker::Sync {
-    // let key_space_length = charset.as_ref().len();
-    // let keys_to_try: Vec<usize> = (0..key_space_length).collect();
-    // let mut parameters: Parameters = Parameters::new();
-    // parameters.insert_str("ciphered_text", ciphered_text);
-    // parameters.insert_str("charset", charset);
-    // let results = keys_to_try.par_iter()
-    //     .map(|&key| {
-    //         let mut process_parameters = parameters.clone();
-    //         process_parameters.insert_int("key", key);
-    //         assess_caesar_key(&parameters)
-    //     })
-    //     .collect();
-    // let best_key = get_best_result(&results);
-    // best_key
     let key_space_length = charset.as_ref().len();
     let mut parameters: Parameters = Parameters::new();
     parameters.insert_str("ciphered_text", ciphered_text);
