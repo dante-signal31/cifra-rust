@@ -135,7 +135,7 @@ pub fn brute_force(assess_function: GetIdentifiedLanguageTuple, assess_function_
 /// * Found key.
 pub fn brute_force_mp(assess_function: GetIdentifiedLanguageTuple, assess_function_args: &Parameters) -> usize{
     let key_space_length = assess_function_args.get_int("key_space_length");
-    let keys_to_try: Vec<usize> = (0..key_space_length).collect();
+    let keys_to_try: Vec<usize> = (1..key_space_length).collect();
     let results: Vec<(usize, IdentifiedLanguage)> = keys_to_try.par_iter()
         .map(|&key| {
             let mut process_parameters = assess_function_args.clone();

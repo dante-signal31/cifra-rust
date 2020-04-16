@@ -46,7 +46,7 @@ pub fn brute_force<T>(ciphered_text: T)-> usize
 /// # Returns:
 /// * Transposition key found.
 pub fn brute_force_mp<T>(ciphered_text: T)-> usize
-    where T: AsRef<str> {
+    where T: AsRef<str> + std::marker::Sync {
     let mut parameters = create_parameters(ciphered_text);
     simple_brute_force_mp(assess_transposition_key, &mut parameters)
 }
