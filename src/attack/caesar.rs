@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 // use rayon::prelude::*;
 
+use crate::Result;
 use crate::attack::dictionaries::{IdentifiedLanguage, identify_language};
 use crate::attack::simple_attacks::brute_force as simple_brute_force;
 use crate::attack::simple_attacks::brute_force_mp as simple_brute_force_mp;
@@ -26,7 +27,7 @@ use crate::cipher::caesar::{DEFAULT_CHARSET, decipher_par};
 ///
 /// # Returns:
 /// * Caesar key found.
-pub fn brute_force<T, U>(ciphered_text: T, charset: U) -> usize
+pub fn brute_force<T, U>(ciphered_text: T, charset: U) -> Result<usize>
     where T: AsRef<str>,
           U: AsRef<str> {
     let mut parameters = create_parameters(ciphered_text, charset);
@@ -97,7 +98,7 @@ fn create_parameters<T,U>(ciphered_text: T, charset: U) -> Parameters
 ///
 /// # Returns:
 /// * A tuple with used key and an *IdentifiedLanguage* object with assessment result.
-fn assess_caesar_key(parameters: &Parameters)-> (usize, IdentifiedLanguage) {
+fn assess_caesar_key(parameters: &Parameters)-> Result<(usize, IdentifiedLanguage)> {
     assess_key(decipher_par, parameters)
 }
 

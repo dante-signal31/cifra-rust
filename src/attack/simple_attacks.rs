@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use rayon::prelude::*;
 
 use crate::attack::dictionaries::{IdentifiedLanguage, identify_language, get_best_result};
+use crate::Result;
 
 
 #[derive(Clone)]
@@ -83,8 +84,8 @@ impl Parameters {
 }
 
 
-type GetIdentifiedLanguageTuple = fn(&Parameters) -> (usize, IdentifiedLanguage);
-type GetString = fn(&Parameters)-> String;
+type GetIdentifiedLanguageTuple = fn(&Parameters) -> Result<(usize, IdentifiedLanguage)>;
+type GetString = fn(&Parameters)-> Result<String>;
 
 /// Get ciphered text key.
 ///
@@ -104,15 +105,15 @@ type GetString = fn(&Parameters)-> String;
 ///
 /// # Returns:
 /// * Found key.
-pub fn brute_force(assess_function: GetIdentifiedLanguageTuple, assess_function_args: &mut Parameters) -> usize {
+pub fn brute_force(assess_function: GetIdentifiedLanguageTuple, assess_function_args: &mut Parameters) -> Result<usize> {
     let key_space_length = assess_function_args.get_int("key_space_length");
     let mut results: Vec<(usize, IdentifiedLanguage)> = Vec::new();
     for key in 1..key_space_length {
         assess_function_args.insert_int("key", key);
-        results.push(assess_function(&assess_function_args));
+        results.push(assess_function(&assess_function_args)?);
     }
     let best_key = get_best_result(&results);
-    return best_key
+    Ok(best_key)
 }
 
 /// Get ciphered text key.
@@ -156,9 +157,9 @@ pub fn brute_force_mp(assess_function: GetIdentifiedLanguageTuple, assess_functi
 ///
 /// # Returns:
 /// * A tuple with used key and an *IdentifiedLanguage* object with assessment result.
-pub fn assess_key(decipher_function: GetString, decipher_function_args: &Parameters) -> (usize, IdentifiedLanguage){
-    let deciphered_text = decipher_function(decipher_function_args);
+pub fn assess_key(decipher_function: GetString, decipher_function_args: &Parameters) -> Result<(usize, IdentifiedLanguage)> {
+    let deciphered_text = decipher_function(decipher_function_args)?;
     let identified_language = identify_language(deciphered_text);
     let used_key = decipher_function_args.get_int("key");
-    (used_key, identified_language)
+    Ok((used_key, identified_language))
 }

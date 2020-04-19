@@ -1,6 +1,8 @@
 use std::ops::Add;
 
 use crate::attack::simple_attacks::{Parameters, ParameterValue};
+use crate::cipher::common::{offset_text, Ciphers};
+use crate::Result;
 
 /// Library to cipher and decipher texts using Caesar method.
 pub const DEFAULT_CHARSET: &str = "abcdefghijklmnopqrstuvwxyz";
@@ -23,11 +25,11 @@ pub const DEFAULT_CHARSET: &str = "abcdefghijklmnopqrstuvwxyz";
 ///
 /// # Returns:
 /// * Ciphered text.
-pub fn cipher<T, U>(text: T, key: usize, charset: U)-> String
+pub fn cipher<T, U>(text: T, key: usize, charset: U)-> Result<String>
     where T: AsRef<str>,
           U: AsRef<str> {
-    let ciphered_text = offset_text(text, key, true, charset);
-    ciphered_text
+    let ciphered_text = offset_text(text, key, true, &Ciphers::CAESAR, charset)?;
+    Ok(ciphered_text)
 }
 
 /// Decipher given text using Caesar method.
@@ -44,15 +46,15 @@ pub fn cipher<T, U>(text: T, key: usize, charset: U)-> String
 ///
 /// # Returns:
 /// * Deciphered text.
-pub fn decipher<T, U>(ciphered_text: T, key: usize, charset: U)-> String
+pub fn decipher<T, U>(ciphered_text: T, key: usize, charset: U)-> Result<String>
     where T: AsRef<str>,
           U: AsRef<str> {
 // pub fn decipher(parameters: &Parameters)-> String {
 //     let ciphered_text = parameters.get_str("ciphered_text");
 //     let charset = parameters.get_str("charset");
 //     let key = parameters.get_int("key");
-    let deciphered_text = offset_text(ciphered_text, key, false, charset);
-    deciphered_text
+    let deciphered_text = offset_text(ciphered_text, key, false, &Ciphers::CAESAR, charset)?;
+    Ok(deciphered_text)
 }
 
 /// Call decipher function using a Parameters type.
@@ -70,11 +72,11 @@ pub fn decipher<T, U>(ciphered_text: T, key: usize, charset: U)-> String
 ///
 /// # Returns:
 /// * Deciphered text.
-pub fn decipher_par(parameters: &Parameters)-> String {
+pub fn decipher_par(parameters: &Parameters)-> Result<String> {
     let ciphered_text = parameters.get_str("ciphered_text");
     let charset = parameters.get_str("charset");
     let key = parameters.get_int("key");
-    decipher(ciphered_text, key, charset)
+    decipher(ciphered_text, key, charset)?
 }
 
 /// Generic function to offset text characters frontwards and backwards.
@@ -87,24 +89,24 @@ pub fn decipher_par(parameters: &Parameters)-> String {
 ///
 /// Returns:
 /// *  Offset text.
-fn offset_text<T, U>(text: T, key: usize, advance: bool, charset: U)-> String
-    where T: AsRef<str>,
-          U: AsRef<str> {
-    let mut offset_text = String::new();
-    for character in text.as_ref().chars() {
-        let normalized_char = character.to_lowercase().to_string();
-        let new_character = match get_new_char_position(&normalized_char, key, advance, &charset) {
-                Some(new_char_position) => charset.as_ref().chars().nth(new_char_position).unwrap(),
-                _ => character.clone()
-            };
-        offset_text = if character.is_lowercase() {
-                offset_text.add(new_character.to_string().as_str())
-            } else {
-                offset_text.add(new_character.to_uppercase().to_string().as_str())
-            };
-    }
-    offset_text
-}
+// fn offset_text<T, U>(text: T, key: usize, advance: bool, charset: U)-> String
+//     where T: AsRef<str>,
+//           U: AsRef<str> {
+//     let mut offset_text = String::new();
+//     for character in text.as_ref().chars() {
+//         let normalized_char = character.to_lowercase().to_string();
+//         let new_character = match get_new_char_position(&normalized_char, key, advance, &charset) {
+//                 Some(new_char_position) => charset.as_ref().chars().nth(new_char_position).unwrap(),
+//                 _ => character.clone()
+//             };
+//         offset_text = if character.is_lowercase() {
+//                 offset_text.add(new_character.to_string().as_str())
+//             } else {
+//                 offset_text.add(new_character.to_uppercase().to_string().as_str())
+//             };
+//     }
+//     offset_text
+// }
 
 
 /// Get position for offset char.
@@ -120,31 +122,31 @@ fn offset_text<T, U>(text: T, key: usize, advance: bool, charset: U)-> String
 ///
 /// Returns:
 /// * If char is present at charset returns its index for offset char. If not returns None.
-fn get_new_char_position<T, U>(character: T, key: usize, advance: bool, charset: U)-> Option<usize>
-    where T: AsRef<str>,
-          U: AsRef<str> {
-    let charset_length = charset.as_ref().len();
-    let character_to_find = character.as_ref().chars().nth(0)?;
-    let char_position = match charset.as_ref().find(character_to_find) {
-            Some(index) => index,
-            _ => return None
-        };
-    let offset_position = if advance {
-        (char_position + key) as isize
-        } else {
-            char_position as isize - key as isize
-        };
-    let new_char_position = if advance {
-            offset_position.abs() as usize % charset_length
-        } else {
-            if offset_position >= 0 {
-                offset_position.abs() as usize
-            } else {
-               charset_length - offset_position.abs() as usize % charset_length
-            }
-        };
-    Some(new_char_position)
-}
+// fn get_new_char_position<T, U>(character: T, key: usize, advance: bool, charset: U)-> Option<usize>
+//     where T: AsRef<str>,
+//           U: AsRef<str> {
+//     let charset_length = charset.as_ref().len();
+//     let character_to_find = character.as_ref().chars().nth(0)?;
+//     let char_position = match charset.as_ref().find(character_to_find) {
+//             Some(index) => index,
+//             _ => return None
+//         };
+//     let offset_position = if advance {
+//         (char_position + key) as isize
+//         } else {
+//             char_position as isize - key as isize
+//         };
+//     let new_char_position = if advance {
+//             offset_position.abs() as usize % charset_length
+//         } else {
+//             if offset_position >= 0 {
+//                 offset_position.abs() as usize
+//             } else {
+//                charset_length - offset_position.abs() as usize % charset_length
+//             }
+//         };
+//     Some(new_char_position)
+// }
 
 #[cfg(test)]
 mod tests {

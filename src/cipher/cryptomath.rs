@@ -29,7 +29,7 @@ fn gcd(mut a: isize, mut b: isize)-> isize {
 ///
 /// # Returns:
 /// * Module inverse integer.
-fn find_mod_inverse(a: isize, m: isize)-> Option<isize> {
+pub fn find_mod_inverse(a: isize, m: isize)-> Option<isize> {
     return if gcd(a, m) != 1 {
         None
     } else {
@@ -56,9 +56,29 @@ fn find_mod_inverse(a: isize, m: isize)-> Option<isize> {
         // Modular inverse uses a true modulus operation, so a workaround for Rust is needed. I use
         // the one given in this thread:
         // https://stackoverflow.com/questions/31210357/is-there-a-modulus-not-remainder-function-operation
-        let result = ((u1 % m) + m) % m;
+        // let result = ((u1 % m) + m) % m;
+        let result = modulus(u1, m);
         Some(result)
     }
+}
+
+/// Get true modulus of a % b
+///
+/// Whereas Rust % operator behaves as a remainder operator Python's one behaves like a modulus.
+/// While two operator get similar results for positive operands they differ when any of them
+/// is negative.
+/// Modular inverse uses a true modulus operation, so a workaround for Rust is needed. I use
+/// the one given in this thread:
+/// https://stackoverflow.com/questions/31210357/is-there-a-modulus-not-remainder-function-operation
+///
+/// # Parameters:
+/// * a: Left hand operand.
+/// * b: Right han operator.
+///
+/// # Returns:
+/// * Modulus result of two operands.
+pub fn modulus(a: isize, b: isize)-> isize{
+    ((a % b) + b) % b
 }
 
 #[cfg(test)]
