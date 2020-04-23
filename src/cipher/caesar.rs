@@ -76,7 +76,7 @@ pub fn decipher_par(parameters: &Parameters)-> Result<String> {
     let ciphered_text = parameters.get_str("ciphered_text");
     let charset = parameters.get_str("charset");
     let key = parameters.get_int("key");
-    decipher(ciphered_text, key, charset)?
+    decipher(ciphered_text, key, charset)
 }
 
 /// Generic function to offset text characters frontwards and backwards.
@@ -157,17 +157,25 @@ mod tests {
 
     #[test]
     fn test_cipher() {
-        let ciphered_text = cipher(ORIGINAL_MESSAGE, 13, DEFAULT_CHARSET);
-        assert_eq!(CIPHERED_MESSAGE_KEY_13, ciphered_text,
-                   "Expected message was:\n\t{}\nBut ciphered was:\n\t{}\n",
-                   CIPHERED_MESSAGE_KEY_13, ciphered_text)
+        let ciphered = cipher(ORIGINAL_MESSAGE, 13, DEFAULT_CHARSET);
+        if let Ok(ciphered_text) = ciphered {
+            assert_eq!(CIPHERED_MESSAGE_KEY_13, ciphered_text,
+                       "Expected message was:\n\t{}\nBut ciphered was:\n\t{}\n",
+                       CIPHERED_MESSAGE_KEY_13, ciphered_text)
+        } else {
+            assert!(false, "Ciphering operation returned an error.")
+        }
     }
 
     #[test]
     fn test_decipher() {
-        let deciphered_text = decipher(CIPHERED_MESSAGE_KEY_13, 13, DEFAULT_CHARSET);
-        assert_eq!(ORIGINAL_MESSAGE, deciphered_text,
-                   "Expected message was:\n\t{}\nBut deciphered was:\n\t{}\n",
-                   ORIGINAL_MESSAGE, deciphered_text)
+        let deciphered = decipher(CIPHERED_MESSAGE_KEY_13, 13, DEFAULT_CHARSET);
+        if let Ok(deciphered_text) = deciphered {
+            assert_eq!(ORIGINAL_MESSAGE, deciphered_text,
+                       "Expected message was:\n\t{}\nBut deciphered was:\n\t{}\n",
+                       ORIGINAL_MESSAGE, deciphered_text)
+        } else {
+            assert!(false, "Ciphering operation returned an error.")
+        }
     }
 }

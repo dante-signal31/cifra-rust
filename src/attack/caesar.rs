@@ -52,7 +52,7 @@ pub fn brute_force<T, U>(ciphered_text: T, charset: U) -> Result<usize>
 ///
 /// # Returns:
 /// * Caesar key found.
-pub fn brute_force_mp<T,U>(ciphered_text: T, charset: U) -> usize
+pub fn brute_force_mp<T,U>(ciphered_text: T, charset: U) -> Result<usize>
     where T: AsRef<str> + std::marker::Sync,
           U: AsRef<str> + std::marker::Sync {
     let mut parameters = create_parameters(ciphered_text, charset);
@@ -158,9 +158,17 @@ mod tests {
         println!("{}", format!("\n\nElapsed time with test_brute_force_caesar_mp: {:.2} seconds.", timer.elapsed().as_secs_f64()));
     }
 
-    fn assert_found_key(found_key: usize){
-        assert_eq!(found_key, TEST_KEY);
-        let deciphered_key = decipher(CIPHERED_MESSAGE_KEY_13, found_key, DEFAULT_CHARSET);
-        assert_eq!( deciphered_key, ORIGINAL_MESSAGE);
+    fn assert_found_key(found_key: Result<usize>){
+        if let Ok(key) = found_key {
+            assert_eq!(key, TEST_KEY);
+            let deciphered = decipher(CIPHERED_MESSAGE_KEY_13, key, DEFAULT_CHARSET);
+            if let Ok(deciphered_text) = deciphered {
+                assert_eq!(deciphered_text, ORIGINAL_MESSAGE);
+            } else {
+                assert!(false, "At deciphering we only could get an error.")
+            }
+        } else {
+            assert!(false, "Test result was an error.")
+        }
     }
 }

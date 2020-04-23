@@ -21,9 +21,26 @@ error_chain! {
     }
     errors {
             ConversionError(var: &'static str, var_type: &'static str, tried_type: &'static str) {
-                description("Conversion failed")
+                description("Conversion failed.")
                 display("{} type variable '{}' could not converted to {}", var_type, var, tried_type)
             }
+            DatabaseError(message: &'static str) {
+                description("Database error")
+                display("{}", message)
+            }
+            StringIndexError(searched_string: String, message: &'static str){
+                description("Error looking for a string.")
+                display("Error looking for {} text. Additional information: {}", searched_string, message)
+            }
+            IOError(file: String){
+                description("Error reading/writing file.")
+                display("Error reading/writing {} file.", file)
+            }
+            NotExistingLanguage(language_tried: String) {
+                description("You have tried to operate with a language that does not exist yet at database.")
+                display("Does not exist any dictionary for {} language", language_tried)
+            }
+
     }
 }
 

@@ -5,13 +5,14 @@ use std::collections::{HashSet, HashMap};
 use std::path::Path;
 use std::error::Error;
 use std::fs::File;
-use std::io::Error as IO_Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use diesel::RunQueryDsl;
 use diesel::prelude::*;
 
 use crate::attack::database::{Database, DatabaseSession, Language, NewLanguage, NewWord};
+use crate::{Result, ErrorKind, ResultExt};
+use crate::error_chain::ChainedError;
 use crate::schema::*;
 use crate::schema::languages;
 use crate::schema::languages::dsl::*;
@@ -68,12 +69,12 @@ impl Dictionary {
     ///    It defaults to False. If it is set to False and language is not already present at
     ///    database then a dictionaries.NotExistingLanguage exception is raised, but if it is
     ///    set to True then language is registered in database as a new language.
-    pub fn new<T>(_language: T, create: bool)-> Result<Self, NotExistingLanguage>
+    pub fn new<T>(_language: T, create: bool)-> Result<Self>
         where T: AsRef<str> {
         let new_language = _language.as_ref().to_string();
         let current_database = Database::new();
         let mut current_dictionary = Dictionary {
-            language: new_language,
+            language: new_language.clone(),
             language_id: 0,
             database:current_database
         };
@@ -86,7 +87,7 @@ impl Dictionary {
             if create {
                 current_dictionary.create_dictionary();
             } else {
-                 return Err(NotExistingLanguage::new(&_language))
+                 bail!(ErrorKind::NotExistingLanguage(new_language.clone()))
             }
         }
         Ok(current_dictionary)
@@ -170,7 +171,7 @@ impl Dictionary {
     ///
     /// # Parameters:
     /// * file_pathname: Absolute path to file with text to analyze.
-    pub fn populate<T>(&mut self, file_pathname: T)-> Result<(), IO_Error>
+    pub fn populate<T>(&mut self, file_pathname: T)-> Result<()>
         where T: AsRef<Path> {
         let _words = get_words_from_text_file(file_pathname.as_ref())?;
         self.add_multiple_words(&_words);
@@ -212,11 +213,13 @@ impl Dictionary {
 ///
 /// # Returns:
 /// A set of words normalized to lowercase and without any punctuation mark.
-pub fn get_words_from_text_file<T>(file_pathname: T) -> Result<HashSet<String>, IO_Error>
+pub fn get_words_from_text_file<T>(file_pathname: T) -> Result<HashSet<String>>
     where T: AsRef<Path> {
     let mut file_content = String::new();
-    let mut file_to_read = File::open(file_pathname.as_ref())?;
-    file_to_read.read_to_string(&mut file_content)?;
+    let mut file_to_read = File::open(file_pathname.as_ref())
+        .chain_err(|| ErrorKind::IOError(file_pathname.as_ref().to_string_lossy().to_string()))?;
+    file_to_read.read_to_string(&mut file_content)
+        .chain_err(|| ErrorKind::IOError(file_pathname.as_ref().to_string_lossy().to_string()))?;
     let words_set = get_words_from_text(file_content);
     Ok(words_set)
 }
@@ -333,15 +336,17 @@ fn get_winner(candidates: &HashMap<String, f64>)-> Option<String> {
 ///
 /// # Returns:
 /// * Key whose IdentifiedLanguage object got the highest probability.
-pub fn get_best_result(identified_languages: &Vec<(usize, IdentifiedLanguage)>)-> usize {
+pub fn get_best_result(identified_languages: &Vec<Result<(usize, IdentifiedLanguage)>>)-> usize {
     let mut current_best_key: usize = 0;
     let mut current_best_key_probability: f64 = 0.0;
-    for (current_key, identified_language) in identified_languages {
-        if let Some(_) = identified_language.winner {
-            if let Some(winner_probability) = identified_language.winner_probability {
-                if winner_probability > current_best_key_probability {
-                    current_best_key = *current_key;
-                    current_best_key_probability = winner_probability;
+    for result in identified_languages {
+        if let Ok((current_key, identified_language)) = result {
+            if let Some(_) = identified_language.winner {
+                if let Some(winner_probability) = identified_language.winner_probability {
+                    if winner_probability > current_best_key_probability {
+                        current_best_key = *current_key;
+                        current_best_key_probability = winner_probability;
+                    }
                 }
             }
         }
@@ -349,27 +354,27 @@ pub fn get_best_result(identified_languages: &Vec<(usize, IdentifiedLanguage)>)-
     current_best_key
 }
 
-/// Error to alarm when you try to work with a Language that has not been created yet.
-#[derive(Debug)]
-pub struct NotExistingLanguage {
-    language_tried: String
-}
-
-impl NotExistingLanguage {
-    pub fn new<T>(language_tried: T)-> Self
-        where T: AsRef<str> {
-        let _language = language_tried.as_ref().to_string();
-        NotExistingLanguage{language_tried: _language }
-    }
-}
-
-impl Error for NotExistingLanguage {}
-
-impl Display for NotExistingLanguage {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "Does not exist any dictionary for {} language", self.language_tried)
-    }
-}
+// /// Error to alarm when you try to work with a Language that has not been created yet.
+// #[derive(Debug)]
+// pub struct NotExistingLanguage {
+//     language_tried: String
+// }
+//
+// impl NotExistingLanguage {
+//     pub fn new<T>(language_tried: T)-> Self
+//         where T: AsRef<str> {
+//         let _language = language_tried.as_ref().to_string();
+//         NotExistingLanguage{language_tried: _language }
+//     }
+// }
+//
+// impl Error for NotExistingLanguage {}
+//
+// impl Display for NotExistingLanguage {
+//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+//         write!(f, "Does not exist any dictionary for {} language", self.language_tried)
+//     }
+// }
 
 #[cfg(test)]
 pub mod tests {

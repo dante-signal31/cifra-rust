@@ -1,5 +1,5 @@
 /// Library to cipher and decipher texts using transposition method.
-
+use crate::Result;
 use crate::attack::simple_attacks::Parameters;
 
 type TranspositionMatrix = Vec<Vec<Option<char>>>;
@@ -26,10 +26,10 @@ pub fn cipher<T>(text: T, key: usize)-> String
 ///
 /// # Returns:
 /// * Deciphered text.
-pub fn decipher<T>(ciphered_text: T, key: usize)-> String
+pub fn decipher<T>(ciphered_text: T, key: usize)-> Result<String>
     where T: AsRef<str> {
     let deciphered_text = transpose_text(&ciphered_text, key, false);
-    deciphered_text
+    Ok(deciphered_text)
 }
 
 /// Call decipher function using a Parameters type.
@@ -45,7 +45,7 @@ pub fn decipher<T>(ciphered_text: T, key: usize)-> String
 ///
 /// # Returns:
 /// * Deciphered text.
-pub fn decipher_par(parameters: &Parameters)-> String {
+pub fn decipher_par(parameters: &Parameters)-> Result<String> {
     let ciphered_text = parameters.get_str("ciphered_text");
     let key = parameters.get_int("key");
     decipher(ciphered_text, key)
@@ -269,11 +269,14 @@ mod tests {
 
     #[test]
     fn test_decipher() {
-        let deciphered_text = decipher(CIPHERED_MESSAGE_KEY_8, TEST_KEY);
-        assert_eq!(ORIGINAL_MESSAGE, deciphered_text,
-                   "Expected message was:\n\t{}\nBut deciphered was:\n\t{}\n",
-                   ORIGINAL_MESSAGE, deciphered_text)
-
+        let deciphered = decipher(CIPHERED_MESSAGE_KEY_8, TEST_KEY);
+        if let Ok(deciphered_text) = deciphered {
+            assert_eq!(ORIGINAL_MESSAGE, deciphered_text,
+                       "Expected message was:\n\t{}\nBut deciphered was:\n\t{}\n",
+                       ORIGINAL_MESSAGE, deciphered_text)
+        } else {
+            assert!(false, "Deciphering operation returned an error.")
+        }
     }
 
     #[test]

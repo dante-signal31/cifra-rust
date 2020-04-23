@@ -107,10 +107,10 @@ type GetString = fn(&Parameters)-> Result<String>;
 /// * Found key.
 pub fn brute_force(assess_function: GetIdentifiedLanguageTuple, assess_function_args: &mut Parameters) -> Result<usize> {
     let key_space_length = assess_function_args.get_int("key_space_length");
-    let mut results: Vec<(usize, IdentifiedLanguage)> = Vec::new();
+    let mut results: Vec<Result<(usize, IdentifiedLanguage)>> = Vec::new();
     for key in 1..key_space_length {
         assess_function_args.insert_int("key", key);
-        results.push(assess_function(&assess_function_args)?);
+        results.push(assess_function(&assess_function_args));
     }
     let best_key = get_best_result(&results);
     Ok(best_key)
@@ -134,10 +134,10 @@ pub fn brute_force(assess_function: GetIdentifiedLanguageTuple, assess_function_
 ///
 /// # Returns:
 /// * Found key.
-pub fn brute_force_mp(assess_function: GetIdentifiedLanguageTuple, assess_function_args: &Parameters) -> usize{
+pub fn brute_force_mp(assess_function: GetIdentifiedLanguageTuple, assess_function_args: &Parameters) -> Result<usize> {
     let key_space_length = assess_function_args.get_int("key_space_length");
     let keys_to_try: Vec<usize> = (1..key_space_length).collect();
-    let results: Vec<(usize, IdentifiedLanguage)> = keys_to_try.par_iter()
+    let results: Vec<Result<(usize, IdentifiedLanguage)>> = keys_to_try.par_iter()
         .map(|&key| {
             let mut process_parameters = assess_function_args.clone();
             process_parameters.insert_int("key", key);
@@ -145,7 +145,7 @@ pub fn brute_force_mp(assess_function: GetIdentifiedLanguageTuple, assess_functi
         })
         .collect();
     let best_key = get_best_result(&results);
-    best_key
+    Ok(best_key)
 }
 
 /// Decipher text with given key and try to find out if returned text can be identified with any
