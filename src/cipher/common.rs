@@ -8,7 +8,7 @@ use crate::{ErrorKind, Result, ResultExt};
 
 /// Common functions to be used across cipher modules.
 
-const DEFAULT_CHARSET: &'static str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890 !?.";
+pub const DEFAULT_CHARSET: &'static str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890 !?.";
 
 #[derive(Debug)]
 pub enum Ciphers {
