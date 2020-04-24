@@ -46,8 +46,8 @@ pub fn decipher<T>(ciphered_text: T, key: usize)-> Result<String>
 /// # Returns:
 /// * Deciphered text.
 pub fn decipher_par(parameters: &Parameters)-> Result<String> {
-    let ciphered_text = parameters.get_str("ciphered_text");
-    let key = parameters.get_int("key");
+    let ciphered_text = parameters.get_str("ciphered_text")?;
+    let key = parameters.get_int("key")?;
     decipher(ciphered_text, key)
 }
 

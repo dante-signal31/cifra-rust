@@ -2,8 +2,8 @@
 use std::collections::HashMap;
 use rayon::prelude::*;
 
+use crate::{ErrorKind, Result, ResultExt};
 use crate::attack::dictionaries::{IdentifiedLanguage, identify_language, get_best_result};
-use crate::Result;
 
 
 #[derive(Clone)]
@@ -31,38 +31,38 @@ impl Parameters {
 
     /// Get value at given key assuming it is an usize value.
     ///
-    /// Panics if given key does not exist or its value is not an usize.
+    /// Error if given key does not exist or its value is not an usize.
     ///
     /// # Parameters:
     /// * key: Key to search its value.
     ///
     /// # Returns
     /// * Key's value.
-    pub fn get_int(&self, key: &'static str)-> usize {
+    pub fn get_int(&self, key: &'static str)-> Result<usize> {
         if let ParameterValue::Int(value) = self.parameters.get(key)
-            .expect(format!("Key {} was not found", key).as_str()) {
-            return *value;
+            .chain_err(|| ErrorKind::KeyError(key.to_string(), format!("Key {} was not found", key)))? {
+            Ok(*value)
         } else {
-            panic!(format!("Value for key {} was not an integer.", key));
-        };
+            bail!(ErrorKind::KeyError(key.to_string(), format!("Value for key {} was not an integer.", key)))
+        }
     }
 
     /// Get value at given key assuming it is an String value.
     ///
-    /// Panics if given key does not exist or its value is not an String.
+    /// Error if given key does not exist or its value is not an String.
     ///
     /// # Parameters:
     /// * key: Key to search its value.
     ///
     /// # Returns
     /// * Key's value.
-    pub fn get_str(&self, key: &'static str)-> String {
+    pub fn get_str(&self, key: &'static str)-> Result<String> {
         if let ParameterValue::Str(value) = self.parameters.get(key)
-            .expect(format!("Key {} was not found", key).as_str()) {
-            return value.clone();
+            .chain_err(|| ErrorKind::KeyError(key.to_string(), format!("Key {} was not found", key)))? {
+            Ok(value.clone())
         } else {
-            panic!(format!("Value for key {} was not an integer.", key));
-        };
+            bail!(ErrorKind::KeyError(key.to_string(), format!("Value for key {} was not an integer.", key)))
+        }
     }
 
     /// Insert an usize type at given key.
@@ -106,7 +106,7 @@ type GetString = fn(&Parameters)-> Result<String>;
 /// # Returns:
 /// * Found key.
 pub fn brute_force(assess_function: GetIdentifiedLanguageTuple, assess_function_args: &mut Parameters) -> Result<usize> {
-    let key_space_length = assess_function_args.get_int("key_space_length");
+    let key_space_length = assess_function_args.get_int("key_space_length")?;
     let mut results: Vec<Result<(usize, IdentifiedLanguage)>> = Vec::new();
     for key in 1..key_space_length {
         assess_function_args.insert_int("key", key);
@@ -135,7 +135,7 @@ pub fn brute_force(assess_function: GetIdentifiedLanguageTuple, assess_function_
 /// # Returns:
 /// * Found key.
 pub fn brute_force_mp(assess_function: GetIdentifiedLanguageTuple, assess_function_args: &Parameters) -> Result<usize> {
-    let key_space_length = assess_function_args.get_int("key_space_length");
+    let key_space_length = assess_function_args.get_int("key_space_length")?;
     let keys_to_try: Vec<usize> = (1..key_space_length).collect();
     let results: Vec<Result<(usize, IdentifiedLanguage)>> = keys_to_try.par_iter()
         .map(|&key| {
@@ -160,6 +160,6 @@ pub fn brute_force_mp(assess_function: GetIdentifiedLanguageTuple, assess_functi
 pub fn assess_key(decipher_function: GetString, decipher_function_args: &Parameters) -> Result<(usize, IdentifiedLanguage)> {
     let deciphered_text = decipher_function(decipher_function_args)?;
     let identified_language = identify_language(deciphered_text);
-    let used_key = decipher_function_args.get_int("key");
+    let used_key = decipher_function_args.get_int("key")?;
     Ok((used_key, identified_language))
 }

@@ -36,10 +36,13 @@ error_chain! {
                 description("Error reading/writing file.")
                 display("Error reading/writing {} file.", file)
             }
+            KeyError(key: String, message: String){
+                description("Error with given key.")
+                display("Problem wit key {}:\n{}", key, message)
+            }
             NotExistingLanguage(language_tried: String) {
                 description("You have tried to operate with a language that does not exist yet at database.")
                 display("Does not exist any dictionary for {} language", language_tried)
             }
-
     }
 }
