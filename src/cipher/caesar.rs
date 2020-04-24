@@ -5,7 +5,7 @@ use crate::cipher::common::{offset_text, Ciphers};
 use crate::Result;
 
 /// Library to cipher and decipher texts using Caesar method.
-pub const DEFAULT_CHARSET: &str = "abcdefghijklmnopqrstuvwxyz";
+// pub const DEFAULT_CHARSET: &str = "abcdefghijklmnopqrstuvwxyz";
 
 
 /// Cipher given text using Caesar method.
@@ -80,12 +80,15 @@ pub fn decipher_par(parameters: &Parameters)-> Result<String> {
 mod tests {
     use super::*;
 
+    use crate::cipher::common::DEFAULT_CHARSET;
+
     const ORIGINAL_MESSAGE: &str = "This is my secret message.";
-    const CIPHERED_MESSAGE_KEY_13: &str = "Guvf vf zl frperg zrffntr.";
+    const CIPHERED_MESSAGE_KEY_13: &str = "guv6Jv6Jz!J6rp5r7Jzr66ntrM";
+    const TEST_KEY: usize = 13;
 
     #[test]
     fn test_cipher() {
-        let ciphered = cipher(ORIGINAL_MESSAGE, 13, DEFAULT_CHARSET);
+        let ciphered = cipher(ORIGINAL_MESSAGE, TEST_KEY, DEFAULT_CHARSET);
         if let Ok(ciphered_text) = ciphered {
             assert_eq!(CIPHERED_MESSAGE_KEY_13, ciphered_text,
                        "Expected message was:\n\t{}\nBut ciphered was:\n\t{}\n",
@@ -97,7 +100,7 @@ mod tests {
 
     #[test]
     fn test_decipher() {
-        let deciphered = decipher(CIPHERED_MESSAGE_KEY_13, 13, DEFAULT_CHARSET);
+        let deciphered = decipher(CIPHERED_MESSAGE_KEY_13, TEST_KEY, DEFAULT_CHARSET);
         if let Ok(deciphered_text) = deciphered {
             assert_eq!(ORIGINAL_MESSAGE, deciphered_text,
                        "Expected message was:\n\t{}\nBut deciphered was:\n\t{}\n",

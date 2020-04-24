@@ -7,7 +7,8 @@ use crate::attack::dictionaries::{IdentifiedLanguage, identify_language};
 use crate::attack::simple_attacks::brute_force as simple_brute_force;
 use crate::attack::simple_attacks::brute_force_mp as simple_brute_force_mp;
 use crate::attack::simple_attacks::{assess_key, Parameters, ParameterValue};
-use crate::cipher::caesar::{DEFAULT_CHARSET, decipher_par};
+use crate::cipher::caesar::decipher_par;
+use crate::cipher::common::DEFAULT_CHARSET;
 
 
 /// Get Caesar ciphered text key.
@@ -133,11 +134,12 @@ mod tests {
     use super::*;
     use std::time::Instant;
     use crate::attack::dictionaries::tests::LoadedDictionaries;
-    use crate::cipher::caesar::{DEFAULT_CHARSET, decipher};
+    use crate::cipher::caesar::decipher;
+    use crate::cipher::common::DEFAULT_CHARSET;
     use diesel::result::Error::DatabaseError;
 
-    const ORIGINAL_MESSAGE: &'static str = "This is my secret message.";
-    const CIPHERED_MESSAGE_KEY_13: &'static str = "Guvf vf zl frperg zrffntr.";
+    const ORIGINAL_MESSAGE: &str = "This is my secret message.";
+    const CIPHERED_MESSAGE_KEY_13: &str = "guv6Jv6Jz!J6rp5r7Jzr66ntrM";
     const TEST_KEY: usize = 13;
     
     #[test]
