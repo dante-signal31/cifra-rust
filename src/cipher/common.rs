@@ -17,18 +17,6 @@ pub enum Ciphers {
     AFFINE
 }
 
-// impl TryFrom<usize> for isize {
-//     type Error = &'static str;
-//
-//     fn try_from(value: usize) -> Result<Self, Self::Error> {
-//         if value > isize::MAX {
-//             Err(format!("Value {} is too big to be converted to isize.", value))
-//         } else {
-//             Ok(value as isize)
-//         }
-//     }
-// }
-
 /// Generic function to offset text character frontwards and backwards.
 ///
 /// # Parameters:
@@ -84,15 +72,6 @@ fn get_new_char_position<T, U>(char: T, key: usize, advance: bool, cipher_used: 
         _ => return Ok(None)
     };
     let offset_position = get_offset_position(char_position, key, advance, cipher_used, charset_length)?;
-    // let new_char_position = if advance {
-    //     offset_position.abs() as usize % charset_length
-    // } else {
-    //     if offset_position >= 0 {
-    //         offset_position.abs() as usize
-    //     } else {
-    //         charset_length - offset_position.abs() as usize % charset_length
-    //     }
-    // };
     let new_char_position = modulus(offset_position, charset_length as isize);
     // Positive operands at modulus give positive modulus result, so it can be casted to usize.
     Ok(Some(new_char_position as usize))
