@@ -10,6 +10,9 @@ use crate::schema::languages::dsl::*;
 use crate::schema::words;
 use crate::schema::words::dsl::*;
 
+use crate::{ErrorKind, Result, ResultExt};
+use std::fmt::Error;
+
 embed_migrations!();
 
 pub type DatabaseSession = SqliteConnection;
@@ -27,22 +30,20 @@ const DATABASE_STANDARD_PATH: &'static str = "~/.cifra/cifra_database.sqlite";
 ///
 /// # Returns:
 /// * Environment value if DEFAULT_URL exists and a VarError if not.
-fn check_database_url_env_var_exists()-> Result<String, VarError>{
-    return match env::var(DATABASE_ENV_VAR) {
-        Ok(var_value) => Ok(var_value),
-        Err(e) => {
+fn check_database_url_env_var_exists()-> Result<String>{
+    return env::var(DATABASE_ENV_VAR)
+        .chain_err (|| {
             env::set_var(DATABASE_ENV_VAR, DATABASE_STANDARD_PATH);
-            Err(e)
-        }
-    };
+            ErrorKind::DatabaseError("Error finding out if database env var existed previously.")
+        })
 }
 
 /// Create and populate database with its default tables.
-pub fn create_database()-> Database{
-    let database = Database::new();
+pub fn create_database()-> Result<Database> {
+    let database = Database::new()?;
     embedded_migrations::run(&database.session)
-        .expect("Error running database migrations.");
-    database
+        .chain_err(|| ErrorKind::DatabaseError("Error running database migrations."))?;
+    Ok(database)
 }
 
 pub struct Database {
@@ -52,25 +53,25 @@ pub struct Database {
 
 impl Database {
 
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self> {
         let database_path = check_database_url_env_var_exists()
-            .expect("Error checking if DATABASE_URL environment variable exists.");
-        Database {
-           session: Self::open_session(),
+            .chain_err(|| ErrorKind::DatabaseError("Error checking if DATABASE_URL environment variable exists."))?;
+        Ok(Database {
+           session: Self::open_session()?,
            database_path
-        }
+        })
     }
 
     /// Connect to current dictionaries database.
     ///
     /// Returns:
     /// A connection to underlying database.
-    fn open_session() -> DatabaseSession {
+    fn open_session() -> Result<DatabaseSession> {
         dotenv().ok();
         let database_url = env::var("DATABASE_URL")
-            .expect("DATABASE_URL must be set");
+            .chain_err(|| ErrorKind::DatabaseError("DATABASE_URL must be set"))?;
         SqliteConnection::establish(&database_url)
-            .expect(&format!("Error connecting to {}", database_url))
+            .chain_err(|| ErrorKind::DatabaseError("Error connecting to DATABASE_URL"))
     }
 }
 

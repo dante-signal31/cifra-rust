@@ -43,24 +43,25 @@ impl Dictionary {
     ///
     /// # Parameters:
     /// * language: Language to remove from database.
-    pub fn remove_dictionary<T>(_language: T)
+    pub fn remove_dictionary<T>(_language: T)-> Result<()>
         where T: AsRef<str> {
-        let database = Database::new();
+        let database = Database::new()?;
         diesel::delete(languages::table.filter(language.eq(_language.as_ref())))
             .execute(&database.session)
-            .expect("Error deleting language");
+            .chain_err(|| ErrorKind::DatabaseError("Error deleting language."))?;
+        Ok(())
     }
 
     /// Get languages dictionaries present at database.
     ///
     /// # Returns:
     /// * A list with names of dictionaries present at database.
-    pub fn get_dictionaries_names()-> Vec<String> {
-        let database = Database::new();
+    pub fn get_dictionaries_names()-> Result<Vec<String>> {
+        let database = Database::new()?;
         let dictionaries_names = languages::table.select(languages::language)
             .load::<String>(&database.session)
-            .expect("Language list could not be retrieved.");
-        dictionaries_names
+            .chain_err(|| ErrorKind::DatabaseError("Language list could not be retrieved."))?;
+        Ok(dictionaries_names)
     }
 
     /// # Parameters:
@@ -72,7 +73,7 @@ impl Dictionary {
     pub fn new<T>(_language: T, create: bool)-> Result<Self>
         where T: AsRef<str> {
         let new_language = _language.as_ref().to_string();
-        let current_database = Database::new();
+        let current_database = Database::new()?;
         let mut current_dictionary = Dictionary {
             language: new_language.clone(),
             language_id: 0,
@@ -268,24 +269,23 @@ pub struct IdentifiedLanguage {
 ///
 /// # Returns:
 /// * Language selected as more likely to be the one used to write text.
-pub fn identify_language<T>(text: T)-> IdentifiedLanguage
+pub fn identify_language<T>(text: T)-> Result<IdentifiedLanguage>
     where T: AsRef<str> {
     let _words = get_words_from_text(&text);
-    let candidates = get_candidates_frecuency(&_words);
+    let candidates = get_candidates_frecuency(&_words)?;
     if let Some(winner) = get_winner(&candidates){
         let winner_probability = *(candidates.get(winner.as_str()).unwrap());
-        IdentifiedLanguage {
+        Ok(IdentifiedLanguage {
             winner: Some(winner),
             winner_probability: Some(winner_probability),
             candidates
-        }
-    }
-    else {
-        IdentifiedLanguage {
+        })
+    } else {
+        Ok(IdentifiedLanguage {
             winner: None,
             winner_probability: None,
             candidates
-        }
+        })
     }
 }
 
@@ -298,17 +298,17 @@ pub fn identify_language<T>(text: T)-> IdentifiedLanguage
 /// * Dict with all languages probabilities. Probabilities are floats
 ///    from 0 to 1. The higher the frequency of presence of words in language
 ///    the higher of this probability.
-fn get_candidates_frecuency(_words: &HashSet<String>)-> HashMap<String, f64> {
+fn get_candidates_frecuency(_words: &HashSet<String>)-> Result<HashMap<String, f64>> {
     let total_words = _words.len();
     let mut candidates: HashMap<String, f64> = HashMap::new();
-    for _language in Dictionary::get_dictionaries_names() {
+    for _language in Dictionary::get_dictionaries_names()? {
         let dictionary = Dictionary::new(&_language, false)
-            .expect(format!("Error opening {} language dictionary", &_language).as_str());
+            .chain_err(|| ErrorKind::DatabaseError("Error opening language dictionary"))?;
         let current_hits: u64 = _words.iter().map(|_word| if dictionary.word_exists(_word) {1} else {0}).sum();
         let frequency = current_hits as f64 / total_words as f64;
         candidates.insert(_language, frequency);
     }
-    candidates
+    Ok(candidates)
 }
 
 /// Return candidate with highest frequency.
@@ -663,7 +663,7 @@ nahm.";
         let mut english_dictionary = Dictionary {
             language: "english".to_string(),
             language_id: 0,
-            database: database::create_database()
+            database: database::create_database().expect("Error creating database")
         };
         assert!(!english_dictionary.already_created());
         english_dictionary.create_dictionary();
@@ -681,7 +681,7 @@ nahm.";
         let not_existing_dictionary = Dictionary {
             language: language_to_remove.to_string(),
             language_id: 0,
-            database: database::create_database()
+            database: database::create_database().expect("Error creating database")
         };
         let micro_dictionary = micro_dictionaries.get(language_to_remove)
             .expect("Error opening dictionary to be removed");
@@ -747,7 +747,7 @@ nahm.";
     #[test]
     fn test_get_dictionaries_names() {
         let loaded_dictionaries = LoadedDictionaries::new();
-        let dictionaries_names = Dictionary::get_dictionaries_names();
+        let dictionaries_names = Dictionary::get_dictionaries_names().expect("Error getting dictionaries names.");
         assert_eq!(dictionaries_names, loaded_dictionaries.languages)
     }
 
@@ -772,7 +772,7 @@ nahm.";
         let test_cases = vec![(ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS, "english"),
                               (SPANISH_TEXT_WITH_PUNCTUATIONS_MARKS, "spanish")];
         for (text, expected_language) in test_cases{
-            let identified_language = identify_language(text);
+            let identified_language = identify_language(text).expect("Error identifying language.");
             if let Some(winner) = identified_language.winner {
                 assert_eq!(winner, expected_language, "Language not correctly identified.");
             } else {

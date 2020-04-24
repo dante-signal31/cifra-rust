@@ -159,7 +159,7 @@ pub fn brute_force_mp(assess_function: GetIdentifiedLanguageTuple, assess_functi
 /// * A tuple with used key and an *IdentifiedLanguage* object with assessment result.
 pub fn assess_key(decipher_function: GetString, decipher_function_args: &Parameters) -> Result<(usize, IdentifiedLanguage)> {
     let deciphered_text = decipher_function(decipher_function_args)?;
-    let identified_language = identify_language(deciphered_text);
+    let identified_language = identify_language(deciphered_text)?;
     let used_key = decipher_function_args.get_int("key")?;
     Ok((used_key, identified_language))
 }
