@@ -28,8 +28,8 @@ pub const DEFAULT_CHARSET: &str = "abcdefghijklmnopqrstuvwxyz";
 pub fn cipher<T, U>(text: T, key: usize, charset: U)-> Result<String>
     where T: AsRef<str>,
           U: AsRef<str> {
-    let ciphered_text = offset_text(text, key, true, &Ciphers::CAESAR, charset)?;
-    Ok(ciphered_text)
+    let ciphered_text = offset_text(text, key, true, &Ciphers::CAESAR, charset);
+    ciphered_text
 }
 
 /// Decipher given text using Caesar method.

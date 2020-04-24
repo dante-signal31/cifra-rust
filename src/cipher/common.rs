@@ -48,7 +48,7 @@ pub fn offset_text<T, U>(text: T, key: usize, advance: bool, cipher_used: &Ciphe
         let normalized_char = character.to_lowercase().to_string();
         let new_character = match get_new_char_position(&normalized_char, key, advance, cipher_used, &charset)? {
             Some(new_char_position) => charset.as_ref().chars().nth(new_char_position).unwrap(),
-            _ => return Ok(character.to_string())
+            _ => character
         };
         offset_text = if character.is_lowercase() {
             offset_text.add(new_character.to_string().as_str())
