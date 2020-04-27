@@ -1,10 +1,14 @@
 /// Library to cipher and decipher texts using Affine method.
+use std::convert::TryInto;
 use std::fmt;
 use std::fmt::{Display, Formatter};
+
+use rand;
+
 use crate::{Result, ErrorKind, ResultExt};
 use crate::cipher::common::{offset_text, Ciphers, DEFAULT_CHARSET, get_key_parts};
 use crate::cipher::cryptomath::gcd;
-use std::convert::TryInto;
+use rand::Rng;
 
 
 #[derive(Debug, Copy, Clone)]
@@ -127,9 +131,19 @@ fn decipher<T, U>(ciphered_text: T, key: usize, charset: U)-> Result<String>
 ///
 /// # Returns:
 /// * An random Affine key valid for given charset.
-fn get_random_key<T>(charset: T)-> usize
+fn get_random_key<T>(charset: T)-> Result<usize>
     where T: AsRef<str>{
-    unimplemented!()
+    let charset_length = charset.as_ref().len();
+    let charset_length_isize: isize = charset_length.try_into()
+        .chain_err(|| ErrorKind::ConversionError("charset_length", "usize", "isize"))?;
+    let mut rng = rand::thread_rng();
+    loop {
+        let key_a = rng.gen_range(2, charset_length_isize);
+        let key_b = rng.gen_range(2, charset_length_isize);
+        if gcd(key_a, charset_length_isize) == 1 {
+            return Ok((key_a as usize) * charset_length + (key_b as usize))
+        }
+    }
 }
 
 /// Check if given key is good for Affine cipher using this charset.
@@ -201,7 +215,7 @@ mod tests {
     #[test]
     fn test_get_random_key() {
         let test_string = random_string(10);
-        let key = get_random_key(DEFAULT_CHARSET);
+        let key = get_random_key(DEFAULT_CHARSET).unwrap();
         assert!(validate_key(key, DEFAULT_CHARSET.len()).unwrap());
         let ciphered_test_string = cipher(&test_string, key, DEFAULT_CHARSET).expect("Error getting ciphered text.");
         let recovered_string = decipher(ciphered_test_string, key, DEFAULT_CHARSET).unwrap();
