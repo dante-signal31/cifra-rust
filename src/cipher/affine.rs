@@ -109,10 +109,12 @@ fn cipher<T, U>(text: T, key: usize, charset: U)-> Result<String>
 ///
 /// # Returns:
 /// * Deciphered text.
-fn decipher<T, U>(ciphered_text: T, key: usize, charset: U)-> String
+fn decipher<T, U>(ciphered_text: T, key: usize, charset: U)-> Result<String>
     where T: AsRef<str>,
           U: AsRef<str> {
-    unimplemented!()
+    validate_key(key, charset.as_ref().len())?;
+    let deciphered_text = offset_text(ciphered_text, key, false, &Ciphers::AFFINE, charset);
+    deciphered_text
 }
 
 /// Get a valid random Affine key for given charset.
@@ -192,7 +194,7 @@ mod tests {
 
     #[test]
     fn test_decipher() {
-        let deciphered_text = decipher(CIPHERED_MESSAGE_KEY_2894, TEST_KEY, DEFAULT_CHARSET);
+        let deciphered_text = decipher(CIPHERED_MESSAGE_KEY_2894, TEST_KEY, DEFAULT_CHARSET).unwrap();
         assert_eq!(ORIGINAL_MESSAGE, deciphered_text);
     }
 
@@ -202,7 +204,7 @@ mod tests {
         let key = get_random_key(DEFAULT_CHARSET);
         assert!(validate_key(key, DEFAULT_CHARSET.len()).unwrap());
         let ciphered_test_string = cipher(&test_string, key, DEFAULT_CHARSET).expect("Error getting ciphered text.");
-        let recovered_string = decipher(ciphered_test_string, key, DEFAULT_CHARSET);
+        let recovered_string = decipher(ciphered_test_string, key, DEFAULT_CHARSET).unwrap();
         assert_eq!(test_string, recovered_string);
     }
 }
