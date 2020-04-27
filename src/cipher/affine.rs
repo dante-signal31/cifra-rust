@@ -1,7 +1,14 @@
 /// Library to cipher and decipher texts using Affine method.
+use std::fmt;
+use std::fmt::{Display, Formatter};
+use crate::{Result, ErrorKind, ResultExt};
+use crate::cipher::common::{offset_text, Ciphers, DEFAULT_CHARSET, get_key_parts};
+use crate::cipher::cryptomath::gcd;
+use std::convert::TryInto;
+
 
 #[derive(Debug, Copy, Clone)]
-enum WrongKeyCauses {
+enum WrongAffineKeyCauses {
     MultiplyingKeyBelowZero,
     MultiplyingKeyZero,
     AddingKeyBelowZero,
@@ -9,23 +16,55 @@ enum WrongKeyCauses {
     KeysNotRelativelyPrime
 }
 
-struct WrongKey {
+impl Display for WrongAffineKeyCauses {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            WrongAffineKeyCauses::MultiplyingKeyBelowZero=> "Multiplying key must be greater than 0.",
+            WrongAffineKeyCauses::MultiplyingKeyZero=> "Multiplying key must not be 0.",
+            WrongAffineKeyCauses::AddingKeyBelowZero=> "Adding key must be greater than 0.",
+            WrongAffineKeyCauses::AddingKeyTooLong=> "Adding key must be smaller than charset length.",
+            WrongAffineKeyCauses::KeysNotRelativelyPrime=> "Keys are not relatively prime."
+        };
+        write!(f, "{}", message)
+    }
+}
+
+#[derive(Debug)]
+pub struct WrongAffineKey {
     key: usize,
     multiplying_key: usize,
     adding_key: usize,
-    cause: WrongKeyCauses
+    cause: WrongAffineKeyCauses
 }
 
-impl WrongKey {
-    /// Get because keys are wrong and a written explanation
-    fn get_cause(&mut self)-> (WrongKeyCauses, &'static str){
-        match self.cause {
-            WrongKeyCauses::MultiplyingKeyBelowZero=> (self.cause, "Wrong key used: Multiplying key must be greater than 0."),
-            WrongKeyCauses::MultiplyingKeyZero=> (self.cause, "Wrong key used: Multiplying key must be greater than 0."),
-            WrongKeyCauses::AddingKeyBelowZero=> (self.cause, "Wrong key used: Multiplying key must be greater than 0."),
-            WrongKeyCauses::AddingKeyTooLong=> (self.cause, "Wrong key used: Multiplying key must be greater than 0."),
-            WrongKeyCauses::KeysNotRelativelyPrime=> (self.cause, "Wrong key used: Multiplying key must be greater than 0.")
+impl WrongAffineKey {
+
+    fn new(key: usize, cause: WrongAffineKeyCauses, charset_length: usize) -> Self {
+        let (multiplying_key, adding_key) = get_key_parts(key, charset_length);
+        WrongAffineKey {
+            key,
+            multiplying_key,
+            adding_key,
+            cause
         }
+    }
+
+    // /// Get because keys are wrong and a written explanation
+    // fn get_cause(&mut self)-> (WrongAffineKeyCauses, &'static str){
+    //     match self.cause {
+    //         WrongAffineKeyCauses::MultiplyingKeyBelowZero=> (self.cause, "Multiplying key must be greater than 0."),
+    //         WrongAffineKeyCauses::MultiplyingKeyZero=> (self.cause, "Multiplying key must be greater than 0."),
+    //         WrongAffineKeyCauses::AddingKeyBelowZero=> (self.cause, "Multiplying key must be greater than 0."),
+    //         WrongAffineKeyCauses::AddingKeyTooLong=> (self.cause, "Multiplying key must be greater than 0."),
+    //         WrongAffineKeyCauses::KeysNotRelativelyPrime=> (self.cause, "Multiplying key must be greater than 0.")
+    //     }
+    // }
+}
+
+impl Display for WrongAffineKey {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Wrong key: {} key decomposes to {} as multiplicative key and {} as adding key, \
+        but problem is {}", self.key, self.multiplying_key, self.adding_key, self.cause)
     }
 }
 
@@ -50,10 +89,12 @@ impl WrongKey {
 ///
 /// # Returns:
 /// * Ciphered text.
-fn cipher<T, U>(text: T, key: usize, charset: U)-> String
+fn cipher<T, U>(text: T, key: usize, charset: U)-> Result<String>
     where T: AsRef<str>,
           U: AsRef<str> {
-    unimplemented!()
+    validate_key(key, charset.as_ref().len());
+    let ciphered_text = offset_text(text, key, true, &Ciphers::AFFINE, DEFAULT_CHARSET);
+    ciphered_text
 }
 
 /// Decipher given text using Affine method.
@@ -103,8 +144,32 @@ fn get_random_key<T>(charset: T)-> usize
 ///
 /// # Returns:
 /// * True if validation was right. You won't receive a False, an exception will be raised before.
-fn validate_key(key: usize, charset_length: usize)-> bool {
-    unimplemented!()
+fn validate_key(key: usize, charset_length: usize)-> Result<bool> {
+    let multiplying_key = key / charset_length;
+    let adding_key = key % charset_length;
+    if multiplying_key < 0 {
+        bail!(ErrorKind::WrongAffineKeyError(
+            WrongAffineKey::new(key, WrongAffineKeyCauses::MultiplyingKeyBelowZero, charset_length)
+            ));
+    } else if multiplying_key == 0 {
+        bail!(ErrorKind::WrongAffineKeyError(
+            WrongAffineKey::new(key, WrongAffineKeyCauses::MultiplyingKeyZero, charset_length)
+            ));
+    } else if adding_key < 0 {
+        bail!(ErrorKind::WrongAffineKeyError(
+            WrongAffineKey::new(key, WrongAffineKeyCauses::AddingKeyBelowZero, charset_length)
+            ));
+    } else if adding_key > charset_length -1 {
+        bail!(ErrorKind::WrongAffineKeyError(
+            WrongAffineKey::new(key, WrongAffineKeyCauses::AddingKeyTooLong, charset_length)
+            ));
+    } else if gcd(multiplying_key.try_into().chain_err(|| ErrorKind::ConversionError("multiplying_key", "usize", "isize"))?,
+                  charset_length.try_into().chain_err(|| ErrorKind::ConversionError("charset_length", "usize", "isize"))?) != 1 {
+        bail!(ErrorKind::WrongAffineKeyError(
+            WrongAffineKey::new(key, WrongAffineKeyCauses::KeysNotRelativelyPrime, charset_length)
+            ));
+    }
+    Ok(true)
 }
 
 #[cfg(test)]
@@ -121,7 +186,7 @@ mod tests {
 
     #[test]
     fn test_cipher() {
-        let ciphered_text = cipher(ORIGINAL_MESSAGE, TEST_KEY, DEFAULT_CHARSET);
+        let ciphered_text = cipher(ORIGINAL_MESSAGE, TEST_KEY, DEFAULT_CHARSET).expect("Error getting ciphered text.");
         assert_eq!(CIPHERED_MESSAGE_KEY_2894, ciphered_text);
     }
 
@@ -135,8 +200,8 @@ mod tests {
     fn test_get_random_key() {
         let test_string = random_string(10);
         let key = get_random_key(DEFAULT_CHARSET);
-        assert!(validate_key(key, DEFAULT_CHARSET.len()));
-        let ciphered_test_string = cipher(&test_string, key, DEFAULT_CHARSET);
+        assert!(validate_key(key, DEFAULT_CHARSET.len()).unwrap());
+        let ciphered_test_string = cipher(&test_string, key, DEFAULT_CHARSET).expect("Error getting ciphered text.");
         let recovered_string = decipher(ciphered_test_string, key, DEFAULT_CHARSET);
         assert_eq!(test_string, recovered_string);
     }

@@ -10,7 +10,7 @@
 ///
 /// # Returns:
 /// * The Greatest Common Divisor between two given numbers.
-fn gcd(mut a: isize, mut b: isize)-> isize {
+pub fn gcd(mut a: isize, mut b: isize)-> isize {
     while a != 0 {
         let previous_a = a;
         a = b % a;

@@ -121,7 +121,7 @@ fn get_offset_position(current_position: usize, key: usize, advance: bool, ciphe
 /// # Returns:
 /// * A tuple whose first component is key used for multiplying while ciphering and second component is used for
 ///     adding.
-fn get_key_parts(key: usize, charset_length: usize)-> (usize, usize){
+pub fn get_key_parts(key: usize, charset_length: usize)-> (usize, usize){
     let multiplying_key = key / charset_length;
     // Operands for this modulus operation are going to be positive always, so no need
     // to use modulus function.
