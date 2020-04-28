@@ -1,3 +1,4 @@
+pub mod affine;
 pub mod caesar;
 mod database;
 pub mod dictionaries;

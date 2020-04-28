@@ -124,12 +124,12 @@ impl Dictionary {
     pub fn add_multiple_words(&mut self, _words: &HashSet<String>){
         let mut word_list: Vec<NewWord> = Vec::new();
         _words.iter().map(|new_word| {
-                let word_to_add = NewWord {
-                    word: new_word,
-                    language_id: self.language_id
-                };
-                word_list.push(word_to_add);
-            }).collect::<Vec<_>>();
+            let word_to_add = NewWord {
+                word: new_word,
+                language_id: self.language_id
+            };
+            word_list.push(word_to_add);
+        }).for_each(drop);
         diesel::insert_into(words::table)
             .values(&word_list)
             .execute(self.session())

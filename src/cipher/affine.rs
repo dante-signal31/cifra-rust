@@ -6,6 +6,7 @@ use std::fmt::{Display, Formatter};
 use rand;
 
 use crate::{Result, ErrorKind, ResultExt};
+use crate::attack::simple_attacks::Parameters;
 use crate::cipher::common::{offset_text, Ciphers, DEFAULT_CHARSET, get_key_parts};
 use crate::cipher::cryptomath::gcd;
 use rand::Rng;
@@ -52,17 +53,6 @@ impl WrongAffineKey {
             cause
         }
     }
-
-    // /// Get because keys are wrong and a written explanation
-    // fn get_cause(&mut self)-> (WrongAffineKeyCauses, &'static str){
-    //     match self.cause {
-    //         WrongAffineKeyCauses::MultiplyingKeyBelowZero=> (self.cause, "Multiplying key must be greater than 0."),
-    //         WrongAffineKeyCauses::MultiplyingKeyZero=> (self.cause, "Multiplying key must be greater than 0."),
-    //         WrongAffineKeyCauses::AddingKeyBelowZero=> (self.cause, "Multiplying key must be greater than 0."),
-    //         WrongAffineKeyCauses::AddingKeyTooLong=> (self.cause, "Multiplying key must be greater than 0."),
-    //         WrongAffineKeyCauses::KeysNotRelativelyPrime=> (self.cause, "Multiplying key must be greater than 0.")
-    //     }
-    // }
 }
 
 impl Display for WrongAffineKey {
@@ -93,10 +83,10 @@ impl Display for WrongAffineKey {
 ///
 /// # Returns:
 /// * Ciphered text.
-fn cipher<T, U>(text: T, key: usize, charset: U)-> Result<String>
+pub fn cipher<T, U>(text: T, key: usize, charset: U)-> Result<String>
     where T: AsRef<str>,
           U: AsRef<str> {
-    validate_key(key, charset.as_ref().len());
+    validate_key(key, charset.as_ref().len())?;
     let ciphered_text = offset_text(text, key, true, &Ciphers::AFFINE, DEFAULT_CHARSET);
     ciphered_text
 }
@@ -113,12 +103,35 @@ fn cipher<T, U>(text: T, key: usize, charset: U)-> Result<String>
 ///
 /// # Returns:
 /// * Deciphered text.
-fn decipher<T, U>(ciphered_text: T, key: usize, charset: U)-> Result<String>
+pub fn decipher<T, U>(ciphered_text: T, key: usize, charset: U)-> Result<String>
     where T: AsRef<str>,
           U: AsRef<str> {
     validate_key(key, charset.as_ref().len())?;
     let deciphered_text = offset_text(ciphered_text, key, false, &Ciphers::AFFINE, charset);
     deciphered_text
+}
+
+
+/// Call decipher function using a Parameters type.
+///
+/// You probably wont use this function. It's used by brute force attacks instead.
+///
+/// # Parameters:
+/// * parameters: Parameters stored in a Parameters type. It should include next keys-values:
+///     * ciphered_text (str): Text to be deciphered.
+///     * key (usize): Secret key. In Affine method, and for deciphering end, it correspond
+///         with how many position get bat in the charset. Both ends should know this and
+///         use the same one.
+///     * charset (str): Charset used for Affine method substitutions. Both end should
+///         use the same charset or original text won't be properly recovered.
+///
+/// # Returns:
+/// * Deciphered text.
+pub fn decipher_par(parameters: &Parameters)-> Result<String> {
+    let ciphered_text = parameters.get_str("ciphered_text")?;
+    let charset = parameters.get_str("charset")?;
+    let key = parameters.get_int("key")?;
+    decipher(ciphered_text, key, charset)
 }
 
 /// Get a valid random Affine key for given charset.
@@ -131,7 +144,7 @@ fn decipher<T, U>(ciphered_text: T, key: usize, charset: U)-> Result<String>
 ///
 /// # Returns:
 /// * An random Affine key valid for given charset.
-fn get_random_key<T>(charset: T)-> Result<usize>
+pub fn get_random_key<T>(charset: T)-> Result<usize>
     where T: AsRef<str>{
     let charset_length = charset.as_ref().len();
     let charset_length_isize: isize = charset_length.try_into()
@@ -160,20 +173,12 @@ fn get_random_key<T>(charset: T)-> Result<usize>
 ///
 /// # Returns:
 /// * True if validation was right. You won't receive a False, an exception will be raised before.
-fn validate_key(key: usize, charset_length: usize)-> Result<bool> {
+pub fn validate_key(key: usize, charset_length: usize)-> Result<bool> {
     let multiplying_key = key / charset_length;
     let adding_key = key % charset_length;
-    if multiplying_key < 0 {
-        bail!(ErrorKind::WrongAffineKeyError(
-            WrongAffineKey::new(key, WrongAffineKeyCauses::MultiplyingKeyBelowZero, charset_length)
-            ));
-    } else if multiplying_key == 0 {
+    if multiplying_key == 0 {
         bail!(ErrorKind::WrongAffineKeyError(
             WrongAffineKey::new(key, WrongAffineKeyCauses::MultiplyingKeyZero, charset_length)
-            ));
-    } else if adding_key < 0 {
-        bail!(ErrorKind::WrongAffineKeyError(
-            WrongAffineKey::new(key, WrongAffineKeyCauses::AddingKeyBelowZero, charset_length)
             ));
     } else if adding_key > charset_length -1 {
         bail!(ErrorKind::WrongAffineKeyError(
