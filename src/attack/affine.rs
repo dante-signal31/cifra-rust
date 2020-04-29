@@ -14,7 +14,7 @@ use crate::attack::dictionaries::{IdentifiedLanguage, identify_language};
 use crate::attack::simple_attacks::brute_force as simple_brute_force;
 use crate::attack::simple_attacks::brute_force_mp as simple_brute_force_mp;
 use crate::attack::simple_attacks::{assess_key, Parameters, ParameterValue};
-use crate::cipher::affine::{decipher, validate_key, WrongAffineKey};
+use crate::cipher::affine::{decipher_par, validate_key, WrongAffineKey};
 
 
 /// Get Affine ciphered text key.
@@ -38,7 +38,8 @@ use crate::cipher::affine::{decipher, validate_key, WrongAffineKey};
 fn brute_force<T, U>(ciphered_text: T, charset: U)-> Result<usize>
     where T: AsRef<str>,
           U: AsRef<str> {
-    unimplemented!()
+    let mut parameters = create_parameters(ciphered_text, charset);
+    simple_brute_force(assess_affine_key, &mut parameters)
 }
 
 /// Get Affine ciphered text key.
@@ -62,7 +63,8 @@ fn brute_force<T, U>(ciphered_text: T, charset: U)-> Result<usize>
 fn brute_force_mp<T, U>(ciphered_text: T, charset: U)-> Result<usize>
     where T: AsRef<str>,
           U: AsRef<str> {
-    unimplemented!()
+    let mut parameters = create_parameters(ciphered_text, charset);
+    simple_brute_force_mp(assess_affine_key, &mut parameters)
 }
 
 /// Decipher text with given key and try to find out if returned text can be identified with any
@@ -79,7 +81,38 @@ fn brute_force_mp<T, U>(ciphered_text: T, charset: U)-> Result<usize>
 /// # Returns:
 /// * A tuple with used key and an *IdentifiedLanguage* object with assessment result.
 fn assess_affine_key(parameters: &Parameters)-> Result<(usize, IdentifiedLanguage)> {
-    unimplemented!()
+    let key = parameters.get_int("key")?;
+    let charset = parameters.get_str("charset")?;
+    let charset_length = charset.len();
+    validate_key(key, charset_length)?;
+    assess_key(decipher_par, parameters)
+}
+
+
+/// Get a Parameters type with given arguments.
+///
+/// # Parameters:
+/// * ciphered_text: Text to be deciphered.
+/// * charset: Charset used for Affine method substitution. Both ends, ciphering
+///     and deciphering, should use the same charset or original text won't be properly
+///     recovered.
+///
+/// # Returns:
+/// * A Parameters type with next key-values:
+///     * ciphered_text: Text to be deciphered.
+///     * charset: Charset used for Affine method substitution. Both ends, ciphering
+///         and deciphering, should use the same charset or original text won't be properly
+///         recovered.
+///     * key_space_length: Key space length of cipher to crack.
+fn create_parameters<T,U>(ciphered_text: T, charset: U) -> Parameters
+    where T: AsRef<str>,
+          U: AsRef<str> {
+    let key_space_length = charset.as_ref().len().pow(2);
+    let mut parameters: Parameters = Parameters::new();
+    parameters.insert_str("ciphered_text", ciphered_text);
+    parameters.insert_str("charset", charset);
+    parameters.insert_int("key_space_length", key_space_length);
+    parameters
 }
 
 #[cfg(test)]
@@ -88,6 +121,7 @@ mod tests {
 
     use std::time::Instant;
     use crate::attack::dictionaries::tests::LoadedDictionaries;
+    use crate::cipher::affine::decipher;
     use crate::cipher::common::DEFAULT_CHARSET;
 
     const ORIGINAL_MESSAGE: &'static str = "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks";
