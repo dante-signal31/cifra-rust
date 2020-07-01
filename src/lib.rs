@@ -50,5 +50,13 @@ error_chain! {
                 description("You selected a wrong Affine key.")
                 display("{}", wrong_key)
             }
+            WrongKeyLength(wrong_key: &'static str, charset: &'static str){
+                description("Wrong key used: Length is not the same than key one")
+                display("Key length is {} and charset length is {}", wrong_key.len(), charset.len())
+            }
+            WrongKeyRepeatedCharacters(wrong_key: &'static str){
+                description("Wrong key used: Key uses repeated characters")
+                display("{}", wrong_key)
+            }
     }
 }
