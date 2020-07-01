@@ -1,4 +1,4 @@
-use crate::{ErrorKind, Result, ResultExt};
+use crate::{ErrorKind, Result, ResultExt, Error};
 use std::collections::HashSet;
 
 /// Library to cipher and decipher texts using substitution method.
@@ -22,13 +22,11 @@ const DEFAULT_CHARSET: &'static str = "abcdefghijklmnopqrstuvwxyz";
 fn check_substitution_key<T, U>(key: T, charset: U) -> Result<()>
     where T: AsRef<str>,
           U: AsRef<str> {
-    let key = key.as_ref();
-    let charset = charset.as_ref();
-    let charset_set: HashSet<char> = charset.chars().collect();
-    if key.len() != charset.len() {
-        bail!(ErrorKind::WrongKeyLength(key, charset))
-    } else if key.len() != charset_set.len() {
-        bail!(ErrorKind::WrongKeyRepeatedCharacters(key))
+    let charset_set: HashSet<char> = charset.as_ref().chars().collect();
+    if key.as_ref().len() != charset.as_ref().len() {
+        bail!(ErrorKind::WrongKeyLength(key.as_ref().to_string(), charset.as_ref().to_string()))
+    } else if key.as_ref().len() != charset_set.len() {
+        bail!(ErrorKind::WrongKeyRepeatedCharacters(key.as_ref().to_string()))
     }
     Ok(())
 }
@@ -55,7 +53,7 @@ fn check_substitution_key<T, U>(key: T, charset: U) -> Result<()>
 ///
 /// # Returns:
 /// * Ciphered text.
-fn cipher(text: T, key: U, charset: V) -> String
+fn cipher<T, U, V>(text: T, key: U, charset: V) -> Result<String>
     where T: AsRef<str>,
           U: AsRef<str>,
           V: AsRef<str>{
@@ -78,7 +76,7 @@ fn cipher(text: T, key: U, charset: V) -> String
 ///
 /// # Returns:
 /// * Deciphered text.
-fn decipher(ciphered_text: T, key: U, charset: V) -> String
+fn decipher<T, U, V>(ciphered_text: T, key: U, charset: V) -> Result<String>
     where T: AsRef<str>,
           U: AsRef<str>,
           V: AsRef<str> {
@@ -91,26 +89,71 @@ mod tests {
 
     const TEST_CHARSET: &'static str = "abcdefghijklmnopqrstuvwxyz";
     const TEST_KEY: &'static str =     "lfwoayuisvkmnxpbdcrjtqeghz";
-    const ORIGINAL_MESSAGE: &'static str  = "If a man is offered a fact which goes against his " /
-                                    "instincts, he will scrutinize it closely, and unless " /
-                                    "the evidence is overwhelming, he will refuse to believe " /
-                                    "it. If, on the other hand, he is offered something which " /
-                                    "affords a reason for acting in accordance to his " /
-                                    "instincts, he will accept it even on the slightest " /
-                                    "evidence. The origin of myths is explained in this way. " /
-                                    "-Bertrand Russell";
-    const CIPHERED_MESSAGE: &'static str = "Sy l nlx sr pyyacao l ylwj eiswi upar lulsxrj isr " /
-                                    "sxrjsxwjr, ia esmm rwctjsxsza sj wmpramh, lxo txmarr " /
-                                    "jia aqsoaxwa sr pqaceiamnsxu, ia esmm caytra " /
-                                    "jp famsaqa sj. Sy, px jia pjiac ilxo, ia sr " /
-                                    "pyyacao rpnajisxu eiswi lyypcor l calrpx ypc " /
-                                    "lwjsxu sx lwwpcolxwa jp isr sxrjsxwjr, ia esmm " /
-                                    "lwwabj sj aqax px jia rmsuijarj aqsoaxwa. Jia pcsusx " /
-                                    "py nhjir sr agbmlsxao sx jisr elh. -Facjclxo Ctrramm";
+    const ORIGINAL_MESSAGE: &'static str  = "If a man is offered a fact which goes against his \
+                                    instincts, he will scrutinize it closely, and unless \
+                                    the evidence is overwhelming, he will refuse to believe \
+                                    it. If, on the other hand, he is offered something which \
+                                    affords a reason for acting in accordance to his \
+                                    instincts, he will accept it even on the slightest \
+                                    evidence. The origin of myths is explained in this way. \
+                                    -Bertrand Russell";
+    const CIPHERED_MESSAGE: &'static str = "Sy l nlx sr pyyacao l ylwj eiswi upar lulsxrj isr \
+                                    sxrjsxwjr, ia esmm rwctjsxsza sj wmpramh, lxo txmarr \
+                                    jia aqsoaxwa sr pqaceiamnsxu, ia esmm caytra \
+                                    jp famsaqa sj. Sy, px jia pjiac ilxo, ia sr \
+                                    pyyacao rpnajisxu eiswi lyypcor l calrpx ypc \
+                                    lwjsxu sx lwwpcolxwa jp isr sxrjsxwjr, ia esmm \
+                                    lwwabj sj aqax px jia rmsuijarj aqsoaxwa. Jia pcsusx \
+                                    py nhjir sr agbmlsxao sx jisr elh. -Facjclxo Ctrramm";
 
 
     #[test]
     fn test_cipher() {
-        let ciphered_text =
+        match cipher(ORIGINAL_MESSAGE, TEST_KEY, TEST_CHARSET) {
+            Ok(ciphered_text) => {
+                assert_eq!(CIPHERED_MESSAGE, ciphered_text, "Message was not ciphered as we were expecting.")
+            },
+            Err(E) => {
+                assert!(false, format!("Error happened: {}", E))
+            }
+        }
+    }
+
+    #[test]
+    fn test_decipher() {
+        match decipher(CIPHERED_MESSAGE, TEST_KEY, TEST_CHARSET) {
+            Ok(deciphered_text) => {
+                assert_eq!(ORIGINAL_MESSAGE, deciphered_text, "Deciphered message was not the one we were expecting")
+            },
+            Err(E) => {
+                assert!(false, format!("Error happened: {}", E))
+            }
+        }
+    }
+
+    #[test]
+    fn test_wrong_length_key_are_detected() {
+        let test_charset = "123";
+        let wrong_key = "1234";
+        if let Err(E) = cipher("", wrong_key, test_charset) {
+            match Error::from(E) {
+                Error(ErrorKind::WrongKeyLength(_, _), _) => assert!(true),
+                error => assert!(false, format!("Raised error was not the one \
+                                          we were expecting but {} instead", error))
+            }
+        } else { assert!(false, "No error was raised when wrong key used.") }
+    }
+
+    #[test]
+    fn test_repeated_character_keys_are_detected() {
+        let test_charset = "123";
+        let wrong_key = "122";
+        if let Err(E) = cipher("", wrong_key, test_charset) {
+            match Error::from(E) {
+                Error(ErrorKind::WrongKeyRepeatedCharacters(_), _) => assert!(true),
+                error => assert!(false, format!("Raised error was not the one \
+                                          we were expecting but {} instead", error))
+            }
+        } else { assert!(false, "No error was raised when wrong key used.") }
     }
 }
