@@ -98,11 +98,33 @@ fn cipher<T, U, V>(text: T, key: U, charset: V) -> Result<String>
 ///
 /// # Returns:
 /// * Deciphered text.
+///
+/// # Raises:
+/// * CharacterMappingError: If there were an error mapping a char to its substitution.
 fn decipher<T, U, V>(ciphered_text: T, key: U, charset: V) -> Result<String>
     where T: AsRef<str>,
           U: AsRef<str>,
           V: AsRef<str> {
-    unimplemented!()
+    let mut deciphered_message = String::new();
+    let charset_chars: Vec<char> = charset.as_ref().chars().collect();
+    for ciphered_char in ciphered_text.as_ref().chars() {
+        if key.as_ref().contains(ciphered_char.to_lowercase().to_string().as_str()) {
+            let key_index = match key.as_ref().find(ciphered_char.to_lowercase().to_string().as_str()) {
+                Some(index) => index,
+                None => bail!(ErrorKind::CharacterMappingError(ciphered_char.to_lowercase().to_string()))
+            };
+            let deciphered_char = charset_chars[key_index];
+            let deciphered_chars = if ciphered_char.is_lowercase() {
+                deciphered_char.to_string()
+            } else {
+                deciphered_char.to_string().to_uppercase()
+            };
+            deciphered_message.push_str(deciphered_chars.as_str());
+        } else {
+            deciphered_message.push_str(ciphered_char.to_string().as_str());
+        }
+    }
+    Ok(deciphered_message)
 }
 
 #[cfg(test)]
