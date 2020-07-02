@@ -58,5 +58,9 @@ error_chain! {
                 description("Wrong key used: Key uses repeated characters")
                 display("{}", wrong_key)
             }
+            CharacterMappingError(wrong_char: String){
+                description("Error trying to substitute char.")
+                display("Char tried to substitute {}", wrong_char)
+            }
     }
 }

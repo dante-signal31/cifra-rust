@@ -53,11 +53,33 @@ fn check_substitution_key<T, U>(key: T, charset: U) -> Result<()>
 ///
 /// # Returns:
 /// * Ciphered text.
+///
+/// # Raises:
+/// * CharacterMappingError: If there were an error mapping a char to its substitution.
 fn cipher<T, U, V>(text: T, key: U, charset: V) -> Result<String>
     where T: AsRef<str>,
           U: AsRef<str>,
           V: AsRef<str>{
-    unimplemented!()
+    let mut ciphered_message: String = String::new();
+    let key_chars: Vec<char> = key.as_ref().chars().collect();
+    for _char in text.as_ref().chars() {
+        if charset.as_ref().contains(_char.to_lowercase().to_string().as_str()) {
+            let charset_index = match charset.as_ref().find(_char.to_lowercase().to_string().as_str()){
+                Some(index) => index,
+                None => bail!(ErrorKind::CharacterMappingError(_char.to_lowercase().to_string()))
+            };
+            let mapped_char: char = key_chars[charset_index];
+            let ciphered_chars: String = if _char.is_lowercase() {
+                mapped_char.to_string()
+            } else {
+                mapped_char.to_uppercase().to_string()
+            };
+            ciphered_message.push_str(ciphered_chars.as_str());
+        } else {
+            ciphered_message.push_str(_char.to_string().as_str())
+        }
+    }
+    Ok(ciphered_message)
 }
 
 /// Decipher given text using substitution method.
