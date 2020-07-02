@@ -1,7 +1,6 @@
+/// Library to cipher and decipher texts using substitution method.
 use crate::{ErrorKind, Result, ResultExt, Error};
 use std::collections::HashSet;
-
-/// Library to cipher and decipher texts using substitution method.
 
 const DEFAULT_CHARSET: &'static str = "abcdefghijklmnopqrstuvwxyz";
 
