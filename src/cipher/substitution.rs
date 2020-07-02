@@ -23,9 +23,10 @@ fn check_substitution_key<T, U>(key: T, charset: U) -> Result<()>
     where T: AsRef<str>,
           U: AsRef<str> {
     let charset_set: HashSet<char> = charset.as_ref().chars().collect();
+    let key_set: HashSet<char> = key.as_ref().chars().collect();
     if key.as_ref().len() != charset.as_ref().len() {
         bail!(ErrorKind::WrongKeyLength(key.as_ref().to_string(), charset.as_ref().to_string()))
-    } else if key.as_ref().len() != charset_set.len() {
+    } else if key_set.len() != charset_set.len() {
         bail!(ErrorKind::WrongKeyRepeatedCharacters(key.as_ref().to_string()))
     }
     Ok(())
@@ -59,7 +60,8 @@ fn check_substitution_key<T, U>(key: T, charset: U) -> Result<()>
 fn cipher<T, U, V>(text: T, key: U, charset: V) -> Result<String>
     where T: AsRef<str>,
           U: AsRef<str>,
-          V: AsRef<str>{
+          V: AsRef<str> {
+    check_substitution_key(&key, &charset)?;
     let mut ciphered_message: String = String::new();
     let key_chars: Vec<char> = key.as_ref().chars().collect();
     for _char in text.as_ref().chars() {
@@ -105,6 +107,7 @@ fn decipher<T, U, V>(ciphered_text: T, key: U, charset: V) -> Result<String>
     where T: AsRef<str>,
           U: AsRef<str>,
           V: AsRef<str> {
+    check_substitution_key(&key, &charset)?;
     let mut deciphered_message = String::new();
     let charset_chars: Vec<char> = charset.as_ref().chars().collect();
     for ciphered_char in ciphered_text.as_ref().chars() {
