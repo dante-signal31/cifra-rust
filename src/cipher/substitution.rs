@@ -56,7 +56,7 @@ fn check_substitution_key<T, U>(key: T, charset: U) -> Result<()>
 ///
 /// # Raises:
 /// * CharacterMappingError: If there were an error mapping a char to its substitution.
-fn cipher<T, U, V>(text: T, key: U, charset: V) -> Result<String>
+pub fn cipher<T, U, V>(text: T, key: U, charset: V) -> Result<String>
     where T: AsRef<str>,
           U: AsRef<str>,
           V: AsRef<str> {
@@ -102,7 +102,7 @@ fn cipher<T, U, V>(text: T, key: U, charset: V) -> Result<String>
 ///
 /// # Raises:
 /// * CharacterMappingError: If there were an error mapping a char to its substitution.
-fn decipher<T, U, V>(ciphered_text: T, key: U, charset: V) -> Result<String>
+pub fn decipher<T, U, V>(ciphered_text: T, key: U, charset: V) -> Result<String>
     where T: AsRef<str>,
           U: AsRef<str>,
           V: AsRef<str> {
