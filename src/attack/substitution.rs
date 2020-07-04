@@ -8,7 +8,9 @@
 /// the good one comparing it with words from a language dictionary. If original
 /// message was in a language you don't have a dictionary for, then correct key
 /// won/'t be detected.
-
+use crate::{ErrorKind, Result, ResultExt, Error};
+use crate::attack::dictionaries::{get_words_from_text, Dictionary};
+use std::collections::{HashMap, HashSet};
 
 /// Get substitution ciphered text key.
 ///
@@ -29,11 +31,224 @@
 ///
 /// # Returns:
 /// * A tuple with substitution key found and success probability.
-fn hack_substitution<T, U, V>(ciphered_text: T, charset: U, database_path: Option<V>) -> (String, f64)
+pub fn hack_substitution<T, U, V>(ciphered_text: T, charset: U) -> Result<(String, f64)>
+    where T: AsRef<str>,
+          U: AsRef<str> {
+    let ciphered_words = get_words_from_text(ciphered_text);
+    let available_languages = Dictionary::get_dictionaries_names()
+        .chain_err(|| ErrorKind::DatabaseError("We could not get dictionaries names."));
+    let mut keys_found: HashMap<String, f64> = HashMap::new();
+    for language in available_languages {
+        let possible_mappings = get_possible_mappings(&language, &ciphered_words, &charset)?;
+        let language_keys = assess_candidate_keys(&ciphered_text, &language,
+                                                  &possible_mappings, &charset);
+        keys_found.extend(language_keys);
+    }
+    let (best_key, best_probability) = get_best_key(&keys_found);
+    Ok((best_key, best_probability))
+}
+
+/// Get every possible mapping for given ciphered words in given language.
+///
+/// # Parameters:
+/// * language: Language to compare with ciphered words.
+/// * ciphered_words: Words whose patterns needs to be compared with those from language dictionary.
+/// * charset: Charset used for substitution method. Both ends, ciphering
+///     and deciphering, should use the same charset or original text won't be properly
+///     recovered.
+///
+/// # Returns:
+/// * Tuple with a Vec of possible mapping found and a string with language name where those
+///     mappings where found.
+fn get_possible_mapping<T, U, V>(language: T, ciphered_words: U, charset: V) -> Result<(Vec<Mapping>, String)>
     where T: AsRef<str>,
           U: AsRef<str>,
           V: AsRef<str> {
     unimplemented!()
+}
+
+/// Assess every possible mapping and get how many recovered words are identifiable
+/// in any language dictionary.
+///
+/// # Parameters:
+/// * ciphered_text: Text to be deciphered.
+/// * language: Language to compare with recovered words.
+/// * possible_mappings: Possible cipherletter mappings for given text.
+/// * charset: Charset used for substitution method. Both ends, ciphering
+///    and deciphering, should use the same charset or original text won't be properly
+///    recovered.
+///
+/// # Returns:
+/// * A HashMap whose keys are tested keys and values are a 0 to 1 float with
+///   comparison sucess for given language. 1 means every deciphered word using
+///   tested key can be found in given language dictionary.
+fn assess_candidate_keys<T, U, V>(ciphered_text: T, language: U,
+                                  possible_mappings: Vec<Mapping>, charset: V) -> HashMap<String, f64>
+    where T: AsRef<str>,
+          U: AsRef<str>,
+          V: AsRef<str> {
+    unimplemented!()
+}
+
+/// Get key with maximum probability
+///
+/// # Parameters:
+/// * keys_found: Dict with cipher keys as dict keys and their corresponding probabilities as float values.
+///
+/// # Returns:
+/// * Tuple with best key and its corresponding probability.
+fn get_best_key(keys_found: HashMap<str, f64>)-> (String, float){
+    unimplemented!()
+}
+
+/// Type to manage possible candidates to substitute every cipherletter in charset.
+///
+/// You can use it as a dict whose keys are letters and values are sets with substitution
+/// letters candidates.
+struct Mapping {
+    mapping: HashMap<String, Option<HashSet<String>>>,
+    charset: String
+}
+
+impl Mapping {
+
+    /// Create empty mapping for cipher letters
+    ///
+    /// # Parameters:
+    /// * charset: Charset used for substitution method. Both ends, ciphering
+    ///     and deciphering, should use the same charset or original text won't be properly
+    ///     recovered.
+    fn init_mapping(&mut self){
+        for char in self.charset.chars() {
+            self.mapping.insert(char.to_string(), None);
+        }
+    }
+
+    /// Create a mapping with all character mappings empty.
+    ///
+    /// # Parameter:
+    /// * charset: Charset used for substitution method. Both ends, ciphering
+    ///     and deciphering, should use the same charset or original text won't be properly
+    ///     recovered.
+    ///
+    /// # Returns:
+    /// * An empty Mapping instance.
+    pub fn new_empty<T>(charset: T) -> Self
+        where T: AsRef<str> {
+        let mut mapping = Self {
+            mapping: HashMap::new(),
+            charset: charset.as_ref().to_string()
+        };
+        mapping.init_mapping();
+        mapping
+    }
+
+    /// Create a mapping loaded with given mapping dict.
+    ///
+    /// # Parameters:
+    /// * mapping_dict: Content to load.
+    /// * charset: Charset used for substitution method. Both ends, ciphering
+    ///      and deciphering, should use the same charset or original text won't be properly
+    ///      recovered.
+    ///
+    /// # Returns:
+    /// * A Mapping instance loaded with mapping dict content.
+    pub fn new(mapping_dict: &HashMap<T, HashSet<U>>, charset: V)-> Self
+        where T: AsRef<str>,
+              U: AsRef<str>,
+              V: AsRef<str> {
+        let mut mapping = Self::new_empty(charset);
+        mapping.load_content(mapping_dict);
+        mapping
+    }
+
+    /// Populates this mapping using a HashMap.
+    ///
+    /// HashMaps's keys are cipherletters and values are sets of mapping char candidates.
+    ///
+    /// Given mapping should use the same charset as this one. Differing cipherletters
+    /// will be discarded.
+    ///
+    /// # Parameters:
+    /// * mapping_dict: Content to load.
+    fn load_content(&mut self, mapping_dict: &HashMap<T, Option<HashSet<U>>>)
+        where T: AsRef<str>,
+              U: AsRef<str> {
+        for (key, value) in mapping_dict.iter() {
+            match value {
+                Some(mapping_set) => {
+                    self.mapping.insert(key.to_string(), Some(HashSet::new()));
+                    for mapping in mapping_set {
+                        if let Some(Some(value)) = self.mapping.get_mut(key.as_ref()) {
+                            value.insert(mapping.to_string());
+                        }
+                    }
+                },
+                None =>  self.mapping.insert(key.to_string(), None)
+            }
+        }
+    }
+
+    /// Get current mapping content.
+    ///
+    /// # Returns:
+    /// * Dict's keys are cipherletters and values are sets of mapping char candidates.
+    fn get_current_content(&self)-> &HashMap<String, Option<HashSet<String>>> {
+        &self.mapping
+    }
+
+    /// Get this mapping cipherletters.
+    ///
+    /// # Returns:
+    /// * A list with cipherletters registered in this mapping.
+    fn cipherletters(&self)-> Vec<String>{
+        let cipherletters_list: Vec<String> = self.mapping.keys().cloned().collect();
+        cipherletters_list
+    }
+
+    /// Generate an string to be used as a substitution key.
+    ///
+    /// If any cipherletter has no substitutions alternative then the same cipherletter
+    /// is used for substitution. Also, be aware that first candidate for every
+    /// cipherletter will be chosen so use this method when mapping is completely
+    /// reduced.
+    ///
+    /// # Returns:
+    /// * Generated key string.
+    fn generate_key_string(&self)-> String {
+        unimplemented!()
+    }
+
+    /// Return every possible mapping from an unresolved mapping.
+    ///
+    /// An unresolved mapping is one that has more than one possibility in any of
+    /// its chars.
+    ///
+    /// # Parameters:
+    /// * mapping: A character mapping.
+    ///
+    /// # Returns:
+    /// * A list of mapping candidates.
+    fn get_possible_mappings(&self, mapping: Option<&Mapping>)-> Vec<Mapping> {
+        unimplemented!()
+    }
+
+    /// Apply given word mapping to reduce this mapping.
+    ///
+    /// # Parameters:
+    /// * word_mapping: Partial mapping for an individual word.
+    fn reduce_mapping(&mut self, world_mapping: &Mapping) {
+        unimplemented!()
+    }
+
+    /// Remove redundancies from mapping.
+    ///
+    /// If any cipherletter has been reduced to just one candidate, then that
+    /// candidate should not be in any other cipherletter. Leaving it would produce
+    /// an inconsistent deciphering key with repeated characters.
+    fn clean_redundancies(&mut self){
+        unimplemented!()
+    }
 }
 
 #[cfg(test)]
@@ -46,6 +261,7 @@ mod tests {
     use crate::cipher::substitution::{cipher, decipher};
     use std::io::Read;
     use std::path::PathBuf;
+    use std::iter::FromIterator;
 
 
     const TEST_CHARSET: &'static str = "abcdefghijklmnopqrstuvwxyz";
@@ -88,8 +304,8 @@ mod tests {
                 Err(E) => {assert!(false, E); String::new()}
             };
             let timer = Instant::now();
-            let found_key = hack_substitution(&ciphered_text, &set.charset,
-                                              Some(loaded_dictionaries.temp_dir.to_str().unwrap()));
+            let found_key = hack_substitution(&ciphered_text, &set.charset)
+                .expect("Error running hacking_substitution().");
             assert_found_key(&found_key, &set.key, &ciphered_text,
                              &text, &set.charset);
             println!("{}", format!("\n\nElapsed time with hack_substitution: {:.2} seconds.", timer.elapsed().as_secs_f64()));
@@ -129,6 +345,48 @@ mod tests {
         };
         assert_eq!(deciphered_text, original_text.as_ref());
     }
+
+    // #[test]
+    // fn test_get_possible_mappings() {
+    //     let mut mapping_content: HashMap<String, Vec<String>> = HashMap::new();
+    //     mapping_content.insert("1".to_string(), vec![""])
+    // }
+
+    #[test]
+    fn test_clean_redundancies() {
+        let mut mapping_content = HashMap::new();
+        mapping_content.insert("1", Some(HashSet::from_iter(vec!["a", "b"].iter())));
+        mapping_content.insert("2", Some(HashSet::from_iter(vec!["c"].iter())));
+        mapping_content.insert("3", Some(HashSet::from_iter(vec!["d"].iter())));
+        mapping_content.insert("4", Some(HashSet::from_iter(vec!["d", "f"].iter())));
+        mapping_content.insert("5", Some(HashSet::from_iter(vec!["c", "h"].iter())));
+        let mut mapping_cleaned = HashMap::new();
+        mapping_cleaned.insert("1", Some(HashSet::from_iter(vec!["a", "b"].iter())));
+        mapping_cleaned.insert("2", Some(HashSet::from_iter(vec!["c"].iter())));
+        mapping_cleaned.insert("3", Some(HashSet::from_iter(vec!["d"].iter())));
+        mapping_cleaned.insert("4", Some(HashSet::from_iter(vec!["f"].iter())));
+        mapping_cleaned.insert("4", Some(HashSet::from_iter(vec!["h"].iter())));
+        let mut mapping = Mapping::new(&mapping_content, TEST_CHARSET);
+        let expected_mapping = Mapping::new(&mapping_cleaned, TEST_CHARSET);
+        mapping.clean_redundancies();
+        assert_eq!(expected_mapping, mapping)
+    }
+
+    #[test]
+    fn test_generate_key_string() {
+        let mut mapping_content = HashMap::new();
+        mapping_content.insert("f", Some(HashSet::from_iter(vec!["a"].iter())));
+        mapping_content.insert("g", Some(HashSet::from_iter(vec!["b"].iter())));
+        mapping_content.insert("h", Some(HashSet::from_iter(vec!["c"].iter())));
+        mapping_content.insert("i", Some(HashSet::from_iter(vec!["d"].iter())));
+        mapping_content.insert("j", Some(HashSet::from_iter(vec!["e"].iter())));
+        let expected_keystring = "ABCDEFGHIJKLMNOPQRSTUVWXYZfghijfghijklmnopqrstuvwxyz";
+        let test_charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        let mapping = Mapping::new(&mapping_content, &test_charset);
+        let returned_keystring = mapping.generate_key_string();
+        assert_eq!(expected_keystring, returned_keystring)
+    }
+
 
 
 }
