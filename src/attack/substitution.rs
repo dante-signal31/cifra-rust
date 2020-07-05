@@ -31,15 +31,15 @@ use std::collections::{HashMap, HashSet};
 ///
 /// # Returns:
 /// * A tuple with substitution key found and success probability.
-pub fn hack_substitution<T, U, V>(ciphered_text: T, charset: U) -> Result<(String, f64)>
+pub fn hack_substitution<T, U>(ciphered_text: T, charset: U) -> Result<(String, f64)>
     where T: AsRef<str>,
           U: AsRef<str> {
     let ciphered_words = get_words_from_text(ciphered_text);
     let available_languages = Dictionary::get_dictionaries_names()
-        .chain_err(|| ErrorKind::DatabaseError("We could not get dictionaries names."));
+        .chain_err(|| ErrorKind::DatabaseError("We could not get dictionaries names."))?;
     let mut keys_found: HashMap<String, f64> = HashMap::new();
     for language in available_languages {
-        let possible_mappings = get_possible_mappings(&language, &ciphered_words, &charset)?;
+        let (possible_mappings, _) = get_possible_mapping(&language, &ciphered_words, &charset)?;
         let language_keys = assess_candidate_keys(&ciphered_text, &language,
                                                   &possible_mappings, &charset);
         keys_found.extend(language_keys);
@@ -60,7 +60,7 @@ pub fn hack_substitution<T, U, V>(ciphered_text: T, charset: U) -> Result<(Strin
 /// # Returns:
 /// * Tuple with a Vec of possible mapping found and a string with language name where those
 ///     mappings where found.
-fn get_possible_mapping<T, U, V>(language: T, ciphered_words: U, charset: V) -> Result<(Vec<Mapping>, String)>
+fn get_possible_mapping<T, U, V>(language: T, ciphered_words: &HashSet<U>, charset: V) -> Result<(Vec<Mapping>, String)>
     where T: AsRef<str>,
           U: AsRef<str>,
           V: AsRef<str> {
@@ -83,7 +83,7 @@ fn get_possible_mapping<T, U, V>(language: T, ciphered_words: U, charset: V) -> 
 ///   comparison sucess for given language. 1 means every deciphered word using
 ///   tested key can be found in given language dictionary.
 fn assess_candidate_keys<T, U, V>(ciphered_text: T, language: U,
-                                  possible_mappings: Vec<Mapping>, charset: V) -> HashMap<String, f64>
+                                  possible_mappings: &Vec<Mapping>, charset: V) -> HashMap<String, f64>
     where T: AsRef<str>,
           U: AsRef<str>,
           V: AsRef<str> {
@@ -97,7 +97,7 @@ fn assess_candidate_keys<T, U, V>(ciphered_text: T, language: U,
 ///
 /// # Returns:
 /// * Tuple with best key and its corresponding probability.
-fn get_best_key(keys_found: HashMap<str, f64>)-> (String, float){
+fn get_best_key(keys_found: &HashMap<String, f64>)-> (String, f64){
     unimplemented!()
 }
 
@@ -153,7 +153,7 @@ impl Mapping {
     ///
     /// # Returns:
     /// * A Mapping instance loaded with mapping dict content.
-    pub fn new(mapping_dict: &HashMap<T, HashSet<U>>, charset: V)-> Self
+    pub fn new<T, U, V>(mapping_dict: &HashMap<T, Option<HashSet<U>>>, charset: V)-> Self
         where T: AsRef<str>,
               U: AsRef<str>,
               V: AsRef<str> {
@@ -171,20 +171,20 @@ impl Mapping {
     ///
     /// # Parameters:
     /// * mapping_dict: Content to load.
-    fn load_content(&mut self, mapping_dict: &HashMap<T, Option<HashSet<U>>>)
+    fn load_content<T, U>(&mut self, mapping_dict: &HashMap<T, Option<HashSet<U>>>)
         where T: AsRef<str>,
               U: AsRef<str> {
         for (key, value) in mapping_dict.iter() {
             match value {
                 Some(mapping_set) => {
-                    self.mapping.insert(key.to_string(), Some(HashSet::new()));
+                    self.mapping.insert(key.as_ref().to_string(), Some(HashSet::new()));
                     for mapping in mapping_set {
                         if let Some(Some(value)) = self.mapping.get_mut(key.as_ref()) {
-                            value.insert(mapping.to_string());
+                            value.insert(mapping.as_ref().to_string());
                         }
                     }
                 },
-                None =>  self.mapping.insert(key.to_string(), None)
+                None =>  {self.mapping.insert(key.as_ref().to_string(), None); }
             }
         }
     }
@@ -249,6 +249,45 @@ impl Mapping {
     fn clean_redundancies(&mut self){
         unimplemented!()
     }
+}
+
+impl PartialEq for Mapping {
+    fn eq(&self, other: &Self) -> bool {
+        if self.charset == other.charset && self.mapping == other.mapping {
+            true
+        } else {
+            false
+        }
+    }
+}
+
+/// Creates a mapping instance using a content description similar to python dicts.
+///
+/// For instance:
+/// ```rust
+///     let mut current_mapping = mapping!(charset TEST_CHARSET,
+///                                        content {"1" => {"a", "b"},
+///                                                 "2" => {"c"},
+///                                                 "3" => {"d"},
+///                                                 "4" => {"d", "f"},
+///                                                 "5" => {"c", "h"}});
+/// ```
+macro_rules! mapping {
+
+        (
+            charset $charset:expr ,
+            content {
+                        $($key:expr => {$($value:expr), +}), +
+                    }
+        ) => {
+                {
+                    let mut mapping_content = HashMap::new();
+                    $( mapping_content.insert($key, Some(HashSet::from_iter(vec![$($value), +].iter()))); )+
+                    let mapping = Mapping::new(&mapping_content, $charset);
+                    mapping
+                }
+        };
+
 }
 
 #[cfg(test)]
@@ -354,39 +393,65 @@ mod tests {
 
     #[test]
     fn test_clean_redundancies() {
-        let mut mapping_content = HashMap::new();
-        mapping_content.insert("1", Some(HashSet::from_iter(vec!["a", "b"].iter())));
-        mapping_content.insert("2", Some(HashSet::from_iter(vec!["c"].iter())));
-        mapping_content.insert("3", Some(HashSet::from_iter(vec!["d"].iter())));
-        mapping_content.insert("4", Some(HashSet::from_iter(vec!["d", "f"].iter())));
-        mapping_content.insert("5", Some(HashSet::from_iter(vec!["c", "h"].iter())));
-        let mut mapping_cleaned = HashMap::new();
-        mapping_cleaned.insert("1", Some(HashSet::from_iter(vec!["a", "b"].iter())));
-        mapping_cleaned.insert("2", Some(HashSet::from_iter(vec!["c"].iter())));
-        mapping_cleaned.insert("3", Some(HashSet::from_iter(vec!["d"].iter())));
-        mapping_cleaned.insert("4", Some(HashSet::from_iter(vec!["f"].iter())));
-        mapping_cleaned.insert("4", Some(HashSet::from_iter(vec!["h"].iter())));
-        let mut mapping = Mapping::new(&mapping_content, TEST_CHARSET);
-        let expected_mapping = Mapping::new(&mapping_cleaned, TEST_CHARSET);
-        mapping.clean_redundancies();
-        assert_eq!(expected_mapping, mapping)
+        // let mut mapping_content = HashMap::new();
+        // mapping_content.insert("1", Some(HashSet::from_iter(vec!["a", "b"].iter())));
+        // mapping_content.insert("2", Some(HashSet::from_iter(vec!["c"].iter())));
+        // mapping_content.insert("3", Some(HashSet::from_iter(vec!["d"].iter())));
+        // mapping_content.insert("4", Some(HashSet::from_iter(vec!["d", "f"].iter())));
+        // mapping_content.insert("5", Some(HashSet::from_iter(vec!["c", "h"].iter())));
+        // let mut mapping_cleaned = HashMap::new();
+        // mapping_cleaned.insert("1", Some(HashSet::from_iter(vec!["a", "b"].iter())));
+        // mapping_cleaned.insert("2", Some(HashSet::from_iter(vec!["c"].iter())));
+        // mapping_cleaned.insert("3", Some(HashSet::from_iter(vec!["d"].iter())));
+        // mapping_cleaned.insert("4", Some(HashSet::from_iter(vec!["f"].iter())));
+        // mapping_cleaned.insert("4", Some(HashSet::from_iter(vec!["h"].iter())));
+        // let mut mapping = Mapping::new(&mapping_content, TEST_CHARSET);
+        trace_macros!(true);
+        let mut current_mapping = mapping!(charset TEST_CHARSET,
+                                                    content {"1" => {"a", "b"},
+                                                             "2" => {"c"},
+                                                             "3" => {"d"},
+                                                             "4" => {"d", "f"},
+                                                             "5" => {"c", "h"}});
+        trace_macros!(false);
+        let expected_mapping = mapping!(charset TEST_CHARSET,
+                                                content {"1"=> {"a", "b"},
+                                                         "2" => {"c"},
+                                                         "3" => {"d"},
+                                                         "4" => {"f"},
+                                                         "5" => {"h"}});
+        // let expected_mapping = Mapping::new(&mapping_cleaned, TEST_CHARSET);
+        current_mapping.clean_redundancies();
+        assert_eq!(expected_mapping, current_mapping)
     }
 
-    #[test]
-    fn test_generate_key_string() {
-        let mut mapping_content = HashMap::new();
-        mapping_content.insert("f", Some(HashSet::from_iter(vec!["a"].iter())));
-        mapping_content.insert("g", Some(HashSet::from_iter(vec!["b"].iter())));
-        mapping_content.insert("h", Some(HashSet::from_iter(vec!["c"].iter())));
-        mapping_content.insert("i", Some(HashSet::from_iter(vec!["d"].iter())));
-        mapping_content.insert("j", Some(HashSet::from_iter(vec!["e"].iter())));
-        let expected_keystring = "ABCDEFGHIJKLMNOPQRSTUVWXYZfghijfghijklmnopqrstuvwxyz";
-        let test_charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-        let mapping = Mapping::new(&mapping_content, &test_charset);
-        let returned_keystring = mapping.generate_key_string();
-        assert_eq!(expected_keystring, returned_keystring)
-    }
+    // #[test]
+    // fn test_generate_key_string() {
+    //     let mut mapping_content = HashMap::new();
+    //     mapping_content.insert("f", Some(HashSet::from_iter(vec!["a"].iter())));
+    //     mapping_content.insert("g", Some(HashSet::from_iter(vec!["b"].iter())));
+    //     mapping_content.insert("h", Some(HashSet::from_iter(vec!["c"].iter())));
+    //     mapping_content.insert("i", Some(HashSet::from_iter(vec!["d"].iter())));
+    //     mapping_content.insert("j", Some(HashSet::from_iter(vec!["e"].iter())));
+    //     let expected_keystring = "ABCDEFGHIJKLMNOPQRSTUVWXYZfghijfghijklmnopqrstuvwxyz";
+    //     let test_charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    //     let mapping = Mapping::new(&mapping_content, &test_charset);
+    //     let returned_keystring = mapping.generate_key_string();
+    //     assert_eq!(expected_keystring, returned_keystring)
+    // }
+    //
+    // #[test]
+    // fn test_get_possible_mappings() {
+    //     //
+    //     let mut mapping_content = HashMap::new();
+    //     mapping_content.insert("1", Some(HashSet::from_iter(vec!["a", "b"].iter())));
+    //     mapping_content.insert("2", Some(HashSet::from_iter(vec!["c"].iter())));
+    //     mapping_content.insert("3", Some(HashSet::from_iter(vec!["d"].iter())));
+    //     mapping_content.insert("4", Some(HashSet::from_iter(vec!["e", "f"].iter())));
+    //     mapping_content.insert("5", Some(HashSet::from_iter(vec!["g", "h"].iter())));
+    //     let mut mapping = Mapping::new_empty(TEST_CHARSET);
+    //     mapping.load_content(&mapping_content);
 
-
+    // }
 
 }

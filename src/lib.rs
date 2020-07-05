@@ -1,3 +1,4 @@
+#![feature(trace_macros)]
 #[macro_use]
 extern crate diesel;
 extern crate dotenv;
