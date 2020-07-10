@@ -11,6 +11,9 @@
 use crate::{ErrorKind, Result, ResultExt, Error};
 use crate::attack::dictionaries::{get_words_from_text, Dictionary};
 use std::collections::{HashMap, HashSet};
+use std::fmt::{Debug, Formatter};
+use std::fmt;
+use std::hash::Hash;
 
 /// Get substitution ciphered text key.
 ///
@@ -34,7 +37,7 @@ use std::collections::{HashMap, HashSet};
 pub fn hack_substitution<T, U>(ciphered_text: T, charset: U) -> Result<(String, f64)>
     where T: AsRef<str>,
           U: AsRef<str> {
-    let ciphered_words = get_words_from_text(ciphered_text);
+    let ciphered_words = get_words_from_text(&ciphered_text);
     let available_languages = Dictionary::get_dictionaries_names()
         .chain_err(|| ErrorKind::DatabaseError("We could not get dictionaries names."))?;
     let mut keys_found: HashMap<String, f64> = HashMap::new();
@@ -105,6 +108,7 @@ fn get_best_key(keys_found: &HashMap<String, f64>)-> (String, f64){
 ///
 /// You can use it as a dict whose keys are letters and values are sets with substitution
 /// letters candidates.
+#[derive(Debug)]
 struct Mapping {
     mapping: HashMap<String, Option<HashSet<String>>>,
     charset: String
@@ -247,7 +251,45 @@ impl Mapping {
     /// candidate should not be in any other cipherletter. Leaving it would produce
     /// an inconsistent deciphering key with repeated characters.
     fn clean_redundancies(&mut self){
-        unimplemented!()
+        let candidates_to_remove: Vec<String> = self.mapping.values()
+            .filter(|&x|
+                if let Some(set) = x {
+                    if set.len() == 1 {
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                })
+            .map(|x| {
+                let set: &HashSet<String> = x.as_ref().unwrap();
+                let mut string: String = String::new();
+                for element in set.iter() {
+                    // Actually I just want first element from set.
+                    string = element.clone();
+                    break;
+                }
+                string
+            })
+            .collect();
+        let keys_to_check: Vec<String> = self.mapping.keys().cloned()
+            .filter(|x|
+                if let Some(Some(set)) = self.mapping.get(x) {
+                    if set.len() > 1 {
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                })
+            .collect();
+        for key_to_check in keys_to_check {
+            let set_option = self.mapping.get_mut(&key_to_check).unwrap();
+            let set = set_option.as_mut().unwrap();
+            set.retain(|x| !candidates_to_remove.contains(x))
+        }
     }
 }
 
@@ -261,34 +303,11 @@ impl PartialEq for Mapping {
     }
 }
 
-/// Creates a mapping instance using a content description similar to python dicts.
-///
-/// For instance:
-/// ```rust
-///     let mut current_mapping = mapping!(charset TEST_CHARSET,
-///                                        content {"1" => {"a", "b"},
-///                                                 "2" => {"c"},
-///                                                 "3" => {"d"},
-///                                                 "4" => {"d", "f"},
-///                                                 "5" => {"c", "h"}});
-/// ```
-macro_rules! mapping {
-
-        (
-            charset $charset:expr ,
-            content {
-                        $($key:expr => {$($value:expr), +}), +
-                    }
-        ) => {
-                {
-                    let mut mapping_content = HashMap::new();
-                    $( mapping_content.insert($key, Some(HashSet::from_iter(vec![$($value), +].iter()))); )+
-                    let mapping = Mapping::new(&mapping_content, $charset);
-                    mapping
-                }
-        };
-
-}
+// impl Debug for Mapping {
+//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+//         unimplemented!()
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
@@ -327,6 +346,48 @@ mod tests {
                 charset
             }
         }
+    }
+
+    /// Creates a mapping instance using a content description similar to python dicts.
+    ///
+    /// For instance:
+    /// ```rust
+    ///     let mut current_mapping = mapping!(TEST_CHARSET,
+    ///                                        {"1" : {"a", "b"},
+    ///                                         "2" : {"c"},
+    ///                                         "3" : {"d"},
+    ///                                         "4" : {"d", "f"},
+    ///                                         "5" : {"c", "h"}});
+    /// ```
+    ///
+    /// # Parameters:
+    /// * charset: Charset used for substitution method. Both ends, ciphering
+    ///      and deciphering, should use the same charset or original text won't be properly
+    ///      recovered.
+    /// * content: Python dict like structure whose keys are cipherletters and values are python
+    ///     set like lists with letter candidates.
+    ///
+    /// # Returns:
+    /// * A Mapping instance loaded with mapping dict content.
+        macro_rules! mapping {
+
+            (
+                $charset:expr ,
+                {
+                    $($key:tt : {$($value:tt), +}), +
+                }
+            ) => {
+                    {
+                        let mut mapping_content = HashMap::new();
+                        $(
+                            let values_list = vec![$($value), +];
+                            let values_iter = values_list.iter();
+                            mapping_content.insert($key, Some(HashSet::from_iter(values_iter)));
+                          )+
+                        let mapping = Mapping::new(&mapping_content, $charset);
+                        mapping
+                    }
+            };
     }
 
     #[test]
@@ -393,34 +454,18 @@ mod tests {
 
     #[test]
     fn test_clean_redundancies() {
-        // let mut mapping_content = HashMap::new();
-        // mapping_content.insert("1", Some(HashSet::from_iter(vec!["a", "b"].iter())));
-        // mapping_content.insert("2", Some(HashSet::from_iter(vec!["c"].iter())));
-        // mapping_content.insert("3", Some(HashSet::from_iter(vec!["d"].iter())));
-        // mapping_content.insert("4", Some(HashSet::from_iter(vec!["d", "f"].iter())));
-        // mapping_content.insert("5", Some(HashSet::from_iter(vec!["c", "h"].iter())));
-        // let mut mapping_cleaned = HashMap::new();
-        // mapping_cleaned.insert("1", Some(HashSet::from_iter(vec!["a", "b"].iter())));
-        // mapping_cleaned.insert("2", Some(HashSet::from_iter(vec!["c"].iter())));
-        // mapping_cleaned.insert("3", Some(HashSet::from_iter(vec!["d"].iter())));
-        // mapping_cleaned.insert("4", Some(HashSet::from_iter(vec!["f"].iter())));
-        // mapping_cleaned.insert("4", Some(HashSet::from_iter(vec!["h"].iter())));
-        // let mut mapping = Mapping::new(&mapping_content, TEST_CHARSET);
-        trace_macros!(true);
-        let mut current_mapping = mapping!(charset TEST_CHARSET,
-                                                    content {"1" => {"a", "b"},
-                                                             "2" => {"c"},
-                                                             "3" => {"d"},
-                                                             "4" => {"d", "f"},
-                                                             "5" => {"c", "h"}});
-        trace_macros!(false);
-        let expected_mapping = mapping!(charset TEST_CHARSET,
-                                                content {"1"=> {"a", "b"},
-                                                         "2" => {"c"},
-                                                         "3" => {"d"},
-                                                         "4" => {"f"},
-                                                         "5" => {"h"}});
-        // let expected_mapping = Mapping::new(&mapping_cleaned, TEST_CHARSET);
+        let mut current_mapping = mapping!(TEST_CHARSET,
+                                                    {"1" : {"a", "b"},
+                                                     "2" : {"c"},
+                                                     "3" : {"d"},
+                                                     "4" : {"d", "f"},
+                                                     "5" : {"c", "h"}});
+        let expected_mapping = mapping!(TEST_CHARSET,
+                                        {"1" : {"a", "b"},
+                                         "2" : {"c"},
+                                         "3" : {"d"},
+                                         "4" : {"f"},
+                                         "5" : {"h"}});
         current_mapping.clean_redundancies();
         assert_eq!(expected_mapping, current_mapping)
     }
