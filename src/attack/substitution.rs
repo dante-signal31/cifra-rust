@@ -264,13 +264,8 @@ impl Mapping {
                 })
             .map(|x| {
                 let set: &HashSet<String> = x.as_ref().unwrap();
-                let mut string: String = String::new();
-                for element in set.iter() {
-                    // Actually I just want first element from set.
-                    string = element.clone();
-                    break;
-                }
-                string
+                // Unwrap is not dangerous here because we filtered to be sure set has at least 1 element.
+                set.get_first_element().unwrap()
             })
             .collect();
         let keys_to_check: Vec<String> = self.mapping.keys().cloned()
@@ -300,6 +295,52 @@ impl PartialEq for Mapping {
         } else {
             false
         }
+    }
+}
+
+trait Extractor {
+    type Item;
+
+    /// Get first N elements from collections.
+    ///
+    /// # Parameters:
+    /// * n: How many elements to return.
+    ///
+    /// # Returns:
+    /// * A list of elements.
+    fn get_n_elements(&self, n: usize) -> Option<Vec<Self::Item>>;
+
+    /// Get first element from collections.
+    ///
+    /// # Returns:
+    /// * An element.
+    fn get_first_element(&self) -> Option<Self::Item>;
+}
+
+impl Extractor for HashSet<String> {
+
+    type Item = String;
+
+    fn get_n_elements(&self, n: usize) -> Option<Vec<String>> {
+        let mut returned_elements: Vec<String> = Vec::new();
+        for element in self.iter() {
+            returned_elements.push(element.clone());
+            if returned_elements.len() >= n {
+                return Some(returned_elements);
+            }
+        }
+        None
+    }
+
+    fn get_first_element(&self) -> Option<Self::Item> {
+        if let Some(elements_list) = self.get_n_elements(1) {
+            if let Some(first_element) = elements_list.get(0) {
+                return Some(first_element.clone());
+            } else {
+                return None;
+            }
+        }
+        None
     }
 }
 
@@ -470,20 +511,50 @@ mod tests {
         assert_eq!(expected_mapping, current_mapping)
     }
 
-    // #[test]
-    // fn test_generate_key_string() {
-    //     let mut mapping_content = HashMap::new();
-    //     mapping_content.insert("f", Some(HashSet::from_iter(vec!["a"].iter())));
-    //     mapping_content.insert("g", Some(HashSet::from_iter(vec!["b"].iter())));
-    //     mapping_content.insert("h", Some(HashSet::from_iter(vec!["c"].iter())));
-    //     mapping_content.insert("i", Some(HashSet::from_iter(vec!["d"].iter())));
-    //     mapping_content.insert("j", Some(HashSet::from_iter(vec!["e"].iter())));
-    //     let expected_keystring = "ABCDEFGHIJKLMNOPQRSTUVWXYZfghijfghijklmnopqrstuvwxyz";
-    //     let test_charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    //     let mapping = Mapping::new(&mapping_content, &test_charset);
-    //     let returned_keystring = mapping.generate_key_string();
-    //     assert_eq!(expected_keystring, returned_keystring)
-    // }
+    #[test]
+    fn test_generate_key_string() {
+        let expected_keystring = "ABCDEFGHIJKLMNOPQRSTUVWXYZfghijfghijklmnopqrstuvwxyz";
+        let test_charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        let mapping = mapping!(test_charset,
+                                                {"f": {"a"},
+                                                   "g": {"b"},
+                                                   "h": {"c"},
+                                                   "i": {"d"},
+                                                   "j": {"e"}});
+        let returned_keystring = mapping.generate_key_string();
+        assert_eq!(expected_keystring, returned_keystring)
+    }
+
+    #[test]
+    fn test_get_n_elements() {
+        let mut set: HashSet<String> = HashSet::new();
+        set.insert("a".to_string());
+        set.insert("b".to_string());
+        set.insert("c".to_string());
+        match set.get_n_elements(2) {
+            Some(list) => {
+                assert_eq!(list.len(), 2);
+            },
+            None => {
+                assert!(false, "No element was extracted.");
+            }
+        }
+    }
+
+    #[test]
+    fn test_get_first_element() {
+        let mut set: HashSet<String> = HashSet::new();
+        set.insert("a".to_string());
+        match set.get_first_element() {
+            Some(element) => {
+                assert_eq!(element, "a".to_string());
+            },
+            None => {
+                assert!(false, "No element was extracted.");
+            }
+        }
+    }
+
     //
     // #[test]
     // fn test_get_possible_mappings() {
