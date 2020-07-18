@@ -220,7 +220,32 @@ impl Mapping {
     /// # Returns:
     /// * Generated key string.
     fn generate_key_string(&self)-> String {
-        unimplemented!()
+        let mut key_list: Vec<String> = Vec::new();
+        for clear_char in self.charset.chars() {
+            let mut char_found = false;
+            for (key, value_set) in self.mapping.iter() {
+                match value_set {
+                    Some(set) => {
+                        // Use this method with already reduced mappings because only
+                        // first element of every set will be taken.
+                        let value = set.get_first_element().unwrap();
+                        if value == clear_char.to_string() {
+                            char_found = true;
+                            key_list.push(key.clone());
+                            break;
+                        }
+                    },
+                    None => continue
+                }
+            }
+            if !char_found {
+                let char_string = clear_char.to_string();
+                key_list.push(char_string);
+            }
+        }
+        let mut string_to_return = String::new();
+        key_list.iter().for_each(|x| string_to_return.push_str(x));
+        string_to_return
     }
 
     /// Return every possible mapping from an unresolved mapping.
