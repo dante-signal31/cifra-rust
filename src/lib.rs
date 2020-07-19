@@ -63,5 +63,9 @@ error_chain! {
                 description("Error trying to substitute char.")
                 display("Char tried to substitute {}", wrong_char)
             }
+            EmptyMapping {
+                description("Mapping has no more cipherletters.")
+                display("Empty mapping.")
+            }
     }
 }

@@ -13,6 +13,51 @@ use crate::attack::dictionaries::{get_words_from_text, Dictionary};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::fmt;
+use std::iter::FromIterator;
+
+/// Creates a mapping instance using a content description similar to python dicts.
+///
+/// For instance:
+/// ```rust
+///     let mut current_mapping = mapping!(TEST_CHARSET,
+///                                        {"1" : {"a", "b"},
+///                                         "2" : {"c"},
+///                                         "3" : {"d"},
+///                                         "4" : {"d", "f"},
+///                                         "5" : {"c", "h"}});
+/// ```
+///
+/// # Parameters:
+/// * charset: Charset used for substitution method. Both ends, ciphering
+///      and deciphering, should use the same charset or original text won't be properly
+///      recovered.
+/// * content: Python dict like structure whose keys are cipherletters and values are python
+///     set like lists with letter candidates.
+///
+/// # Returns:
+/// * A Mapping instance loaded with mapping dict content.
+macro_rules! mapping {
+
+        (
+            $charset:expr ,
+            {
+                $($key:tt : {$($value:tt), +}), +
+            }
+        ) => {
+                {
+                    let mut mapping_content = HashMap::new();
+                    $(
+                        let values_list = vec![$($value), +];
+                        let values_iter = values_list.iter();
+                        mapping_content.insert($key, Some(HashSet::from_iter(values_iter)));
+                      )+
+                    let mapping = Mapping::new(&mapping_content, $charset);
+                    mapping
+                }
+        };
+    }
+
+
 
 /// Get substitution ciphered text key.
 ///
@@ -268,8 +313,37 @@ impl Mapping {
     ///
     /// # Returns:
     /// * A list of mapping candidates.
-    fn _get_possible_mappings(&self, mapping: Option<&Mapping>)-> Vec<Mapping> {
-        unimplemented!()
+    fn _get_possible_mappings(&self, mut mapping: Option<&Mapping>)-> Vec<Mapping> {
+        let mut mapping_list: Vec<Mapping> = Vec::new();
+        let mut step_mapping = match mapping {
+            None => Mapping::new(self.get_current_content(), &self.charset),
+            Some(start_mapping) => start_mapping.clone()
+        };
+        if let Ok((char, candidates)) = step_mapping.pop_item() {
+            let partial_mappings = self._get_possible_mappings(Some(&mut step_mapping));
+            match candidates {
+                Some(set) => {
+                    for candidate in set.iter() {
+                        for partial_mapping in partial_mappings.iter() {
+                            let cloned_char = char.clone();
+                            let mut current_mapping = mapping!(&self.charset, {cloned_char : {candidate}});
+                            current_mapping.load_content(partial_mapping.get_current_content());
+                            mapping_list.push(current_mapping);
+                        }
+                    }
+                },
+                None => {
+                    for partial_mapping in partial_mappings.iter() {
+                        let mut current_mapping = Mapping::new_empty(&self.charset);
+                        current_mapping.load_content(partial_mapping.get_current_content());
+                        mapping_list.push(current_mapping);
+                    }
+                }
+            };
+        } else {
+            return vec![Mapping::new_empty(&self.charset)];
+        }
+        mapping_list
     }
 
     /// Apply given word mapping to reduce this mapping.
@@ -377,6 +451,20 @@ impl Mapping {
     where T: AsRef<str> {
         self.mapping.insert(key.as_ref().to_string(), value)
     }
+
+    /// Remove and return a cipherletter and its candidates from current mapping.
+    ///
+    /// # Returns:
+    /// * A tuple with selected cipherletter and its candidates.
+    fn pop_item(&mut self) -> Result<(String, Option<HashSet<String>>)> {
+        if self.mapping.keys().len() >= 1 {
+            let cipherletter: String = self.mapping.keys().cloned().take(1).collect();
+            let set = self.mapping.remove(cipherletter.as_str()).unwrap();
+            Ok((cipherletter, set))
+        } else {
+            Err(ErrorKind::EmptyMapping.into())
+        }
+    }
 }
 
 impl PartialEq for Mapping {
@@ -386,6 +474,12 @@ impl PartialEq for Mapping {
         } else {
             false
         }
+    }
+}
+
+impl Clone for Mapping {
+    fn clone(&self) -> Self {
+        Mapping::new(&self.mapping, &self.charset)
     }
 }
 
@@ -435,6 +529,7 @@ impl Extractor for HashSet<String> {
     }
 }
 
+
 // impl Debug for Mapping {
 //     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
 //         unimplemented!()
@@ -478,48 +573,6 @@ mod tests {
                 charset
             }
         }
-    }
-
-    /// Creates a mapping instance using a content description similar to python dicts.
-    ///
-    /// For instance:
-    /// ```rust
-    ///     let mut current_mapping = mapping!(TEST_CHARSET,
-    ///                                        {"1" : {"a", "b"},
-    ///                                         "2" : {"c"},
-    ///                                         "3" : {"d"},
-    ///                                         "4" : {"d", "f"},
-    ///                                         "5" : {"c", "h"}});
-    /// ```
-    ///
-    /// # Parameters:
-    /// * charset: Charset used for substitution method. Both ends, ciphering
-    ///      and deciphering, should use the same charset or original text won't be properly
-    ///      recovered.
-    /// * content: Python dict like structure whose keys are cipherletters and values are python
-    ///     set like lists with letter candidates.
-    ///
-    /// # Returns:
-    /// * A Mapping instance loaded with mapping dict content.
-    macro_rules! mapping {
-
-        (
-            $charset:expr ,
-            {
-                $($key:tt : {$($value:tt), +}), +
-            }
-        ) => {
-                {
-                    let mut mapping_content = HashMap::new();
-                    $(
-                        let values_list = vec![$($value), +];
-                        let values_iter = values_list.iter();
-                        mapping_content.insert($key, Some(HashSet::from_iter(values_iter)));
-                      )+
-                    let mapping = Mapping::new(&mapping_content, $charset);
-                    mapping
-                }
-        };
     }
 
     /// Creates a candidates set valid to assigned to a Mapping key.
@@ -784,5 +837,44 @@ mod tests {
         let content = mapping.get("4").unwrap().as_ref().expect("Error retrieving key.");
         let content_list = content.get_n_elements(2).expect("Error retrieving content.");
         assert!(vec!["r", "t"].iter().all(|candidate| content_list.contains(&candidate.to_string())));
+    }
+
+    #[test]
+    fn test_popitem() {
+        let mut mapping = mapping!(TEST_CHARSET,
+                                            {"1": {"a", "b"},
+                                               "2": {"c"},
+                                               "3": {"d"},
+                                               "4": {"e", "f", "g"},
+                                               "5": {"h"}});
+        // Test correct item extraction.
+        let original_content = mapping.get_current_content().clone();
+        let original_keys: Vec<&String> = original_content.keys().collect();
+        let (extracted_cipherletter, extracted_candidates) = mapping.pop_item()
+            .expect("Error extracting item.");
+        assert!(original_keys.contains(&&extracted_cipherletter),
+                format!("Extracted key {} was not among original ones.", &extracted_cipherletter));
+        // Test extraction reduces length.
+        let resulting_keys = mapping.cipherletters();
+        let original_keys_length = original_keys.len().to_string();
+        let resulting_keys_length = resulting_keys.len().to_string();
+        assert_eq!(resulting_keys.len(), original_keys.len() - 1,
+                   "Original keys length of {} is {} after pop",
+                   original_keys_length.as_str(),
+                   resulting_keys_length.as_str());
+        assert!(!resulting_keys.contains(&extracted_cipherletter),
+                format!("Extracted cipherletter {} was not removed from mapping", &extracted_cipherletter));
+        // Test extraction from empty mapping generates an error.
+        mapping = Mapping {
+            mapping: HashMap::new(),
+            charset: "".to_string()
+        };
+        if let Err(E) = mapping.pop_item() {
+            match Error::from(E) {
+                Error(ErrorKind::EmptyMapping, _) => assert!(true),
+                error => assert!(false, format!("Raised error was not the one \
+                                          we were expecting but {} instead", error))
+            }
+        } else { assert!(false, "No error was raised when extracting from empty mapping.") }
     }
 }
