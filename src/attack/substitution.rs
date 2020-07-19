@@ -13,8 +13,6 @@ use crate::attack::dictionaries::{get_words_from_text, Dictionary};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::fmt;
-use std::hash::Hash;
-use std::ops::{Index, IndexMut};
 
 /// Get substitution ciphered text key.
 ///
