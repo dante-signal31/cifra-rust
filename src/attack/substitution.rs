@@ -14,6 +14,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::fmt;
 use std::hash::Hash;
+use std::ops::{Index, IndexMut};
 
 /// Get substitution ciphered text key.
 ///
@@ -266,8 +267,32 @@ impl Mapping {
     ///
     /// # Parameters:
     /// * word_mapping: Partial mapping for an individual word.
-    fn reduce_mapping(&mut self, world_mapping: &Mapping) {
-        unimplemented!()
+    fn reduce_mapping(&mut self, word_mapping: &Mapping) {
+        for cipherletter in self.cipherletters()  {
+            // Unwrap here is safe because we are using cipherletters.
+            if let Some(set) = self.get(cipherletter.as_str()).unwrap() {
+                // Previous candidates present for cipherletter so reducing needed.
+                if let Some(word_cipherletters_mapping_option) = word_mapping.get(cipherletter.as_str()) {
+                    match word_cipherletters_mapping_option {
+                        Some(word_cipherletter_mapping) => {
+                            let new_candidates_set: HashSet<String> = set.intersection(word_cipherletter_mapping).map(|x| x.clone()).collect();
+                            self.set(cipherletter.as_str(), Some(new_candidates_set));
+                        },
+                        None => {}
+                    };
+                }
+            } else {
+                // No previous candidates present for cipherletter so just copy word mapping.
+                if let Some(word_cipherletters_mapping_option) = word_mapping.get(cipherletter.as_str()) {
+                    match word_cipherletters_mapping_option {
+                        Some(word_cipherletter_mapping) => {
+                            self.set(cipherletter.as_str(), Some(word_cipherletter_mapping.clone()));
+                        },
+                        None => {}
+                    };
+                }
+            }
+        }
     }
 
     /// Remove redundancies from mapping.
@@ -310,6 +335,38 @@ impl Mapping {
             let set = set_option.as_mut().unwrap();
             set.retain(|x| !candidates_to_remove.contains(x))
         }
+    }
+
+    /// Get candidates for given cipherletter.
+    ///
+    /// If the mapping did not have this cipherletter present, [`None`] is returned.
+    ///
+    /// # Parameters:
+    /// * key: Cipherletter to get candidates from.
+    ///
+    /// # Returns:
+    /// * Current candidates set or None if cipherletter is not present.
+    fn get<T>(&self, key: T) -> Option<&Option<HashSet<String>>>
+        where T: AsRef<str> {
+        self.mapping.get(key.as_ref())
+    }
+
+    /// Inserts a cipherletter-candidates pair into the mappping.
+    ///
+    /// If the mapping did not have this cipherletter present, [`None`] is returned.
+    ///
+    /// If the mappping did have this cipherletter present, the value is updated, and the old
+    /// value is returned. The key is not updated, though.
+    ///
+    /// # Parameters:
+    /// * key: Cipherletter to update.
+    /// * value: New value to insert.
+    ///
+    /// # Returns:
+    /// * Old value or None if key was not found.
+    fn set<T>(&mut self, key: T, value: Option<HashSet<String>>) -> Option<Option<HashSet<String>>>
+    where T: AsRef<str> {
+        self.mapping.insert(key.as_ref().to_string(), value)
     }
 }
 
@@ -435,25 +492,57 @@ mod tests {
     ///
     /// # Returns:
     /// * A Mapping instance loaded with mapping dict content.
-        macro_rules! mapping {
+    macro_rules! mapping {
 
-            (
-                $charset:expr ,
+        (
+            $charset:expr ,
+            {
+                $($key:tt : {$($value:tt), +}), +
+            }
+        ) => {
                 {
-                    $($key:tt : {$($value:tt), +}), +
+                    let mut mapping_content = HashMap::new();
+                    $(
+                        let values_list = vec![$($value), +];
+                        let values_iter = values_list.iter();
+                        mapping_content.insert($key, Some(HashSet::from_iter(values_iter)));
+                      )+
+                    let mapping = Mapping::new(&mapping_content, $charset);
+                    mapping
                 }
-            ) => {
-                    {
-                        let mut mapping_content = HashMap::new();
-                        $(
-                            let values_list = vec![$($value), +];
-                            let values_iter = values_list.iter();
-                            mapping_content.insert($key, Some(HashSet::from_iter(values_iter)));
-                          )+
-                        let mapping = Mapping::new(&mapping_content, $charset);
-                        mapping
-                    }
-            };
+        };
+    }
+
+    /// Creates a candidates set valid to assigned to a Mapping key.
+    ///
+    /// For instance:
+    /// ```rust
+    ///     let mut current_mapping = mapping!(TEST_CHARSET,
+    ///                                        {"1" : {"a", "b"},
+    ///                                         "2" : {"c"},
+    ///                                         "3" : {"d"},
+    ///                                         "4" : {"d", "f"},
+    ///                                         "5" : {"c", "h"}});
+    ///     current_mapping["4"] = candidates!("r", "p", "x");
+    /// ```
+    ///
+    /// # Parameters:
+    /// * A list of &str chars to be included as candidates.
+    ///
+    /// # Returns:
+    /// * A HashSet ready to be assigned to a Mapping key.
+    macro_rules! candidates {
+        (
+            $($value:tt), +
+        ) => {
+            {
+                let mut candidates_set = HashSet::new();
+                $(
+                    candidates_set.insert($value.to_string());
+                 )+
+                Some(candidates_set)
+            }
+        };
     }
 
     #[test]
@@ -595,4 +684,54 @@ mod tests {
 
     // }
 
+    #[test]
+    fn test_reduce_mapping() {
+        let mut mapping = mapping!(TEST_CHARSET,
+                                            {"1": {"a", "b"},
+                                               "2": {"c"},
+                                               "3": {"d"},
+                                               "4": {"e", "f", "g"},
+                                               "5": {"h"}});
+        let mapping_2 = mapping!(TEST_CHARSET,
+                                            {"1": {"a"},
+                                                 "2": {"c"},
+                                                 "4": {"e", "g"},
+                                                 "5": {"h"}});
+        let expected_reduced_mapping = mapping!(TEST_CHARSET,
+                                                {"1": {"a"},
+                                                    "2": {"c"},
+                                                    "3": {"d"},
+                                                    "4": {"e", "g"},
+                                                    "5": {"h"}});
+        mapping.reduce_mapping(&mapping_2);
+        assert_eq!(mapping, expected_reduced_mapping,
+                   "Mapping was not reduced as expected.");
+    }
+
+    #[test]
+    fn test_mapping_indexing_get() {
+        let mut mapping = mapping!(TEST_CHARSET,
+                                            {"1": {"a", "b"},
+                                               "2": {"c"},
+                                               "3": {"d"},
+                                               "4": {"e", "f", "g"},
+                                               "5": {"h"}});
+        let content = mapping.get("2").unwrap().as_ref().expect("Error retrieving key.");
+        let content_string = content.get_first_element().expect("Error retrieving content.");
+        assert_eq!("c".to_string(), content_string);
+    }
+
+    #[test]
+    fn test_mapping_indexing_set() {
+        let mut mapping = mapping!(TEST_CHARSET,
+                                            {"1": {"a", "b"},
+                                               "2": {"c"},
+                                               "3": {"d"},
+                                               "4": {"e", "f", "g"},
+                                               "5": {"h"}});
+        mapping.set("4", candidates!("r", "t"));
+        let content = mapping.get("4").unwrap().as_ref().expect("Error retrieving key.");
+        let content_list = content.get_n_elements(2).expect("Error retrieving content.");
+        assert_eq!(vec!["r", "t"], content_list);
+    }
 }
