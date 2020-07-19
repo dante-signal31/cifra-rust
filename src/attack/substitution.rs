@@ -257,7 +257,18 @@ impl Mapping {
     ///
     /// # Returns:
     /// * A list of mapping candidates.
-    fn get_possible_mappings(&self, mapping: Option<&Mapping>)-> Vec<Mapping> {
+    fn get_possible_mappings(&self)-> Vec<Mapping> {
+        self._get_possible_mappings(None)
+    }
+
+    /// Utility recursive method used by get_possible_mappings().
+    ///
+    /// # Parameters:
+    /// * mapping: A character mapping.
+    ///
+    /// # Returns:
+    /// * A list of mapping candidates.
+    fn _get_possible_mappings(&self, mapping: Option<&Mapping>)-> Vec<Mapping> {
         unimplemented!()
     }
 
@@ -667,20 +678,62 @@ mod tests {
         }
     }
 
-    //
-    // #[test]
-    // fn test_get_possible_mappings() {
-    //     //
-    //     let mut mapping_content = HashMap::new();
-    //     mapping_content.insert("1", Some(HashSet::from_iter(vec!["a", "b"].iter())));
-    //     mapping_content.insert("2", Some(HashSet::from_iter(vec!["c"].iter())));
-    //     mapping_content.insert("3", Some(HashSet::from_iter(vec!["d"].iter())));
-    //     mapping_content.insert("4", Some(HashSet::from_iter(vec!["e", "f"].iter())));
-    //     mapping_content.insert("5", Some(HashSet::from_iter(vec!["g", "h"].iter())));
-    //     let mut mapping = Mapping::new_empty(TEST_CHARSET);
-    //     mapping.load_content(&mapping_content);
 
-    // }
+    #[test]
+    fn test_get_possible_mappings() {
+        let mapping = mapping!(TEST_CHARSET,
+                                {"1": {"a", "b"},
+                                               "2": {"c"},
+                                               "3": {"d"},
+                                               "4": {"e", "f"},
+                                               "5": {"g", "h"}});
+        let expected_list = vec![
+            mapping!(TEST_CHARSET, {"1": {"a"},
+                              "2": {"c"},
+                              "3": {"d"},
+                              "4": {"e"},
+                              "5": {"g"}}),
+            mapping!(TEST_CHARSET, {"1": {"a"},
+                                    "2": {"c"},
+                                    "3": {"d"},
+                                    "4": {"f"},
+                                    "5": {"g"}}),
+
+            mapping!(TEST_CHARSET, {"1": {"b"},
+                                      "2": {"c"},
+                                      "3": {"d"},
+                                      "4": {"e"},
+                                      "5": {"g"}}),
+            mapping!(TEST_CHARSET, {"1": {"b"},
+                                        "2": {"c"},
+                                        "3": {"d"},
+                                        "4": {"f"},
+                                        "5": {"g"}}),
+            mapping!(TEST_CHARSET, {"1": {"a"},
+                              "2": {"c"},
+                              "3": {"d"},
+                              "4": {"e"},
+                              "5": {"h"}}),
+            mapping!(TEST_CHARSET, {"1": {"a"},
+                                    "2": {"c"},
+                                    "3": {"d"},
+                                    "4": {"f"},
+                                    "5": {"h"}}),
+            mapping!(TEST_CHARSET, {"1": {"b"},
+                                      "2": {"c"},
+                                      "3": {"d"},
+                                      "4": {"e"},
+                                      "5": {"h"}}),
+            mapping!(TEST_CHARSET, {"1": {"b"},
+                                        "2": {"c"},
+                                        "3": {"d"},
+                                        "4": {"f"},
+                                        "5": {"h"}}),
+        ];
+        let recovered_mappings = mapping.get_possible_mappings();
+        assert_eq!(expected_list.len(), recovered_mappings.len());
+        assert!(expected_list.iter().all(|_mapping| recovered_mappings.contains(&_mapping)));
+    }
 
     #[test]
     fn test_reduce_mapping() {
@@ -730,6 +783,6 @@ mod tests {
         mapping.set("4", candidates!("r", "t"));
         let content = mapping.get("4").unwrap().as_ref().expect("Error retrieving key.");
         let content_list = content.get_n_elements(2).expect("Error retrieving content.");
-        assert_eq!(vec!["r", "t"], content_list);
+        assert!(vec!["r", "t"].iter().all(|candidate| content_list.contains(&candidate.to_string())));
     }
 }
