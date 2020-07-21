@@ -222,17 +222,16 @@ impl Mapping {
     fn load_content<T, U>(&mut self, mapping_dict: &HashMap<T, Option<HashSet<U>>>)
         where T: AsRef<str>,
               U: AsRef<str> {
+        let keys_list: Vec<String> = mapping_dict.keys().map(|x| x.as_ref().to_string()).collect();
         for (key, value) in mapping_dict.iter() {
-            match value {
-                Some(mapping_set) => {
-                    self.mapping.insert(key.as_ref().to_string(), Some(HashSet::new()));
-                    for mapping in mapping_set {
-                        if let Some(Some(value)) = self.mapping.get_mut(key.as_ref()) {
-                            value.insert(mapping.as_ref().to_string());
-                        }
-                    }
-                },
-                None =>  {self.mapping.insert(key.as_ref().to_string(), None); }
+            if keys_list.contains(&key.as_ref().to_string()){
+                match value {
+                    Some(mapping_set) => {
+                        let mapping_set_clone: HashSet<String> = mapping_set.iter().map(|x| x.as_ref().to_string()).collect();
+                        self.mapping.insert(key.as_ref().to_string(), Some(mapping_set_clone));
+                    },
+                    None =>  {self.mapping.insert(key.as_ref().to_string(), None); }
+                }
             }
         }
     }
@@ -340,10 +339,10 @@ impl Mapping {
                     }
                 }
             };
+            return mapping_list
         } else {
-            return vec![Mapping::new_empty(&self.charset)];
+            return vec![Mapping::new_empty(&self.charset),];
         }
-        mapping_list
     }
 
     /// Apply given word mapping to reduce this mapping.
@@ -479,7 +478,10 @@ impl PartialEq for Mapping {
 
 impl Clone for Mapping {
     fn clone(&self) -> Self {
-        Mapping::new(&self.mapping, &self.charset)
+        Self {
+            mapping: self.mapping.clone(),
+            charset: self.charset.clone()
+        }
     }
 }
 
