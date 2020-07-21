@@ -55,6 +55,21 @@ macro_rules! mapping {
                     mapping
                 }
         };
+        (
+            $charset:expr ,
+            {
+                $($key:tt : {}), +
+            }
+        ) => {
+                {
+                    let mut mapping_content: HashMap<String, Option<HashSet<String>>> = HashMap::new();
+                    $(
+                        mapping_content.insert($key, None);
+                      )+
+                    let mapping = Mapping::new(&mapping_content, $charset);
+                    mapping
+                }
+        };
     }
 
 
@@ -86,7 +101,7 @@ pub fn hack_substitution<T, U>(ciphered_text: T, charset: U) -> Result<(String, 
         .chain_err(|| ErrorKind::DatabaseError("We could not get dictionaries names."))?;
     let mut keys_found: HashMap<String, f64> = HashMap::new();
     for language in available_languages {
-        let (possible_mappings, _) = get_possible_mapping(&language, &ciphered_words, &charset)?;
+        let (possible_mappings, _) = get_possible_mappings(&language, &ciphered_words, &charset)?;
         let language_keys = assess_candidate_keys(&ciphered_text, &language,
                                                   &possible_mappings, &charset);
         keys_found.extend(language_keys);
@@ -107,7 +122,7 @@ pub fn hack_substitution<T, U>(ciphered_text: T, charset: U) -> Result<(String, 
 /// # Returns:
 /// * Tuple with a Vec of possible mapping found and a string with language name where those
 ///     mappings where found.
-fn get_possible_mapping<T, U, V>(language: T, ciphered_words: &HashSet<U>, charset: V) -> Result<(Vec<Mapping>, String)>
+fn get_possible_mappings<T, U, V>(language: T, ciphered_words: &HashSet<U>, charset: V) -> Result<(Vec<Mapping>, String)>
     where T: AsRef<str>,
           U: AsRef<str>,
           V: AsRef<str> {
@@ -333,7 +348,8 @@ impl Mapping {
                 },
                 None => {
                     for partial_mapping in partial_mappings.iter() {
-                        let mut current_mapping = Mapping::new_empty(&self.charset);
+                        let cloned_char = char.clone();
+                        let mut current_mapping = mapping!(&self.charset, {cloned_char : {}});
                         current_mapping.load_content(partial_mapping.get_current_content());
                         mapping_list.push(current_mapping);
                     }
@@ -785,6 +801,64 @@ mod tests {
                                         "4": {"f"},
                                         "5": {"h"}}),
         ];
+        let recovered_mappings = mapping.get_possible_mappings();
+        assert_eq!(expected_list.len(), recovered_mappings.len());
+        assert!(expected_list.iter().all(|_mapping| recovered_mappings.contains(&_mapping)));
+    }
+
+    #[test]
+    fn test_get_possible_mappings_with_empties() {
+        let mut mapping = mapping!(TEST_CHARSET,
+                                {"1": {"a", "b"},
+                                               "2": {"c"},
+                                               "3": {"d"},
+                                               "4": {"e", "f"},
+                                               "5": {"g", "h"}});
+        mapping.set("1.5", None);
+        let mut expected_list = vec![
+            mapping!(TEST_CHARSET, {"1": {"a"},
+                              "2": {"c"},
+                              "3": {"d"},
+                              "4": {"e"},
+                              "5": {"g"}}),
+            mapping!(TEST_CHARSET, {"1": {"a"},
+                                    "2": {"c"},
+                                    "3": {"d"},
+                                    "4": {"f"},
+                                    "5": {"g"}}),
+
+            mapping!(TEST_CHARSET, {"1": {"b"},
+                                      "2": {"c"},
+                                      "3": {"d"},
+                                      "4": {"e"},
+                                      "5": {"g"}}),
+            mapping!(TEST_CHARSET, {"1": {"b"},
+                                        "2": {"c"},
+                                        "3": {"d"},
+                                        "4": {"f"},
+                                        "5": {"g"}}),
+            mapping!(TEST_CHARSET, {"1": {"a"},
+                              "2": {"c"},
+                              "3": {"d"},
+                              "4": {"e"},
+                              "5": {"h"}}),
+            mapping!(TEST_CHARSET, {"1": {"a"},
+                                    "2": {"c"},
+                                    "3": {"d"},
+                                    "4": {"f"},
+                                    "5": {"h"}}),
+            mapping!(TEST_CHARSET, {"1": {"b"},
+                                      "2": {"c"},
+                                      "3": {"d"},
+                                      "4": {"e"},
+                                      "5": {"h"}}),
+            mapping!(TEST_CHARSET, {"1": {"b"},
+                                        "2": {"c"},
+                                        "3": {"d"},
+                                        "4": {"f"},
+                                        "5": {"h"}}),
+        ];
+        expected_list.iter_mut().for_each(|mapping| {mapping.set("1.5", None);});
         let recovered_mappings = mapping.get_possible_mappings();
         assert_eq!(expected_list.len(), recovered_mappings.len());
         assert!(expected_list.iter().all(|_mapping| recovered_mappings.contains(&_mapping)));
