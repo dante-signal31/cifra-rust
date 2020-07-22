@@ -9,7 +9,7 @@
 /// message was in a language you don't have a dictionary for, then correct key
 /// won/'t be detected.
 use crate::{ErrorKind, Result, ResultExt, Error};
-use crate::attack::dictionaries::{get_words_from_text, Dictionary};
+use crate::attack::dictionaries::{get_words_from_text, Dictionary, get_word_pattern};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::fmt;
@@ -126,7 +126,63 @@ fn get_possible_mappings<T, U, V>(language: T, ciphered_words: &HashSet<U>, char
     where T: AsRef<str>,
           U: AsRef<str>,
           V: AsRef<str> {
-    unimplemented!()
+    let mut global_mapping = generate_language_mapping(&language, ciphered_words, &charset)
+        .chain_err(|| "Error generating language mapping.")?;
+    global_mapping.clean_redundancies();
+    let possible_mappings = global_mapping.get_possible_mappings();
+    Ok((possible_mappings, language.as_ref().to_string()))
+}
+
+/// Generate a mapping with all letter candidates in given language for every cipherletter.
+///
+/// # Parameters:
+/// * language: Language to look letter candidates into.
+/// * ciphered_words: Every cipherword in message.
+/// * charset: Charset used for substitution. Both ends, ciphering
+///     and deciphering, should use the same charset or original text won't be properly
+///     recovered.
+///
+/// # Returns:
+/// * Mapping loaded with all candidates in given language.
+fn generate_language_mapping<T, U, V>(language: T, ciphered_words: &HashSet<U>, charset: V) -> Result<Mapping>
+    where T: AsRef<str>,
+          U: AsRef<str>,
+          V: AsRef<str> {
+    let mut language_mapping = Mapping::new_empty(&charset);
+    let dictionary = Dictionary::new(&language, false)?;
+    for ciphered_word in ciphered_words {
+        let word_mapping = get_word_mapping(&charset, ciphered_word, &dictionary);
+        language_mapping.reduce_mapping(&word_mapping);
+    }
+    Ok(language_mapping)
+}
+
+/// Create a mapping with characters candidates for given ciphered word.
+///
+/// # Parameters:
+/// * charset: Charset used for substitution method. Both ends, ciphering
+///     and deciphering, should use the same charset or original text won't be properly
+///     recovered.
+/// * ciphered_word: Ciphered word used to find words with similar patterns.
+/// * dictionary: Dictionary to extract from words with the same pattern than ciphered word.
+///
+/// # Returns:
+/// * A Mapping class instance.
+fn get_word_mapping<T, U>(charset: T, ciphered_word: U, dictionary: &Dictionary) -> Mapping
+    where T: AsRef<str>,
+          U: AsRef<str> {
+    let mut word_mapping = Mapping::new_empty(&charset);
+    let ciphered_word_pattern: String = get_word_pattern(&ciphered_word);
+    let word_candidates = dictionary.get_words_with_pattern(&ciphered_word_pattern);
+    for (index, char) in ciphered_word.as_ref().chars().enumerate() {
+        for word_candidate in word_candidates.iter() {
+            if let Some(selected_char) = word_candidate.chars().nth(index) {
+                word_mapping.add(&char.to_string(), selected_char.to_string());
+            }
+
+        }
+    }
+    word_mapping
 }
 
 /// Assess every possible mapping and get how many recovered words are identifiable
@@ -398,7 +454,7 @@ impl Mapping {
     /// If any cipherletter has been reduced to just one candidate, then that
     /// candidate should not be in any other cipherletter. Leaving it would produce
     /// an inconsistent deciphering key with repeated characters.
-    fn clean_redundancies(&mut self){
+    pub fn clean_redundancies(&mut self){
         let candidates_to_remove: Vec<String> = self.mapping.values()
             .filter(|&x|
                 if let Some(set) = x {
@@ -479,6 +535,43 @@ impl Mapping {
         } else {
             Err(ErrorKind::EmptyMapping.into())
         }
+    }
+
+    /// Insert a new candidate into an existing mapping.
+    ///
+    /// Whereas set() assigns an entire HashSet to cipherletter, this method only adds a new candidate
+    /// to existing cipherletter.
+    ///
+    /// # Parameters:
+    /// * key: Cipherletter to update.
+    /// * value: Candidate to insert.
+    fn add<T, U>(&mut self, key: T, value: U)
+        where T: AsRef<str>,
+              U: AsRef<str> {
+        let mut candidates_ref = self.mapping.get_mut(key.as_ref());
+        if let Some(candidates_option) = candidates_ref.as_mut() {
+            match candidates_option {
+                Some(candidates) => { candidates.insert(value.as_ref().to_string()); },
+                None => {
+                    self.create_new_single_entry(&key, &value);
+                }
+            }
+        } else {
+            self.create_new_single_entry(&key, &value);
+        }
+    }
+
+    /// Create a new set at given cipherletter just with one candidate.
+    ///
+    /// # Parameters:
+    /// * key: Cipherletter to update.
+    /// * value: Candidate to insert.
+    fn create_new_single_entry<T, U>(&mut self, key: T, value: U)
+        where T: AsRef<str>,
+              U: AsRef<str> {
+        let mut new_candidates_set = HashSet::new();
+        new_candidates_set.insert(value.as_ref().to_string());
+        self.mapping.insert(key.as_ref().to_string(), Some(new_candidates_set));
     }
 }
 
@@ -889,7 +982,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mapping_indexing_get() {
+    fn test_mapping_get() {
         let mut mapping = mapping!(TEST_CHARSET,
                                             {"1": {"a", "b"},
                                                "2": {"c"},
@@ -902,7 +995,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mapping_indexing_set() {
+    fn test_mapping_set() {
         let mut mapping = mapping!(TEST_CHARSET,
                                             {"1": {"a", "b"},
                                                "2": {"c"},
@@ -913,6 +1006,25 @@ mod tests {
         let content = mapping.get("4").unwrap().as_ref().expect("Error retrieving key.");
         let content_list = content.get_n_elements(2).expect("Error retrieving content.");
         assert!(vec!["r", "t"].iter().all(|candidate| content_list.contains(&candidate.to_string())));
+    }
+
+    #[test]
+    fn test_mapping_add() {
+        let mut mapping = mapping!(TEST_CHARSET,
+                                            {"1": {"a", "b"},
+                                               "2": {"c"},
+                                               "3": {"d"},
+                                               "4": {"e", "f", "g"},
+                                               "5": {"h"}});
+        mapping.add("4", "x");
+        let content = mapping.get("4").unwrap().as_ref().expect("Error retrieving key.");
+        let expected_length: usize = 4;
+        assert_eq!(expected_length, content.len(),
+                   "Content has {} while we were expecting {}.",
+                   content.len(), expected_length);
+        let content_list = content.get_n_elements(expected_length).expect("Error retrieving content.");
+        assert!(vec!["e", "f", "g", "x"].iter().all(|candidate| content_list.contains(&candidate.to_string())));
+
     }
 
     #[test]

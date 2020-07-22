@@ -1,7 +1,7 @@
 /// Module to deal with words dictionaries.
 ///
 /// A dictionary is a repository of distinct words present in an actual language.
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashSet, HashMap, BTreeMap};
 use std::path::Path;
 use std::error::Error;
 use std::fs::File;
@@ -21,6 +21,7 @@ use crate::schema::words::dsl::*;
 use diesel::result::Error::DatabaseError;
 use regex::Regex;
 use std::io::Read;
+use std::ops::Index;
 
 
 /// Cifra stores word dictionaries in a local database. This class
@@ -205,6 +206,38 @@ impl Dictionary {
             .first::<i32>(self.session())
             .expect("Error getting newly created language id.");
     }
+
+    /// Get a list of every word with given pattern.
+    ///
+    /// # Parameters:
+    /// * pattern: Word patter to search for.
+    ///
+    /// # Returns:
+    /// * List of words at dictionary with given pattern.
+    pub fn get_words_with_pattern<T>(&self, pattern: T) -> Vec<String>
+        where T: AsRef<str> {
+        unimplemented!()
+    }
+}
+
+/// Get word pattern.
+///
+/// This pattern is useful to break substitution cipher.
+///
+/// # Parameters:
+/// * word: Word to get pattern for.
+///
+/// # Returns:
+/// * Word pattern.
+pub fn get_word_pattern<T>(_word: T) -> String 
+    where T: AsRef<str> {
+    let mut char_order: BTreeMap<String, Option<HashSet<String>>> = BTreeMap::new();
+    _word.as_ref().chars()
+        .for_each(|_char| {
+            char_order.insert(_char.to_string(), None);
+        });
+    let chars_indexed: Vec<String> = char_order.keys().collect();
+    let pattern = _word.as_ref().chars().map(|_char| chars_indexed.)
 }
 
 /// Extract words from given file.
@@ -784,5 +817,30 @@ nahm.";
                 assert!(false, "Language probability not found.")
             }
         }
+    }
+
+    #[test]
+    fn test_get_word_pattern() {
+        let _word = "HGHHU";
+        let expected_word_pattern = "0.1.0.0.2";
+        let word_pattern = get_word_pattern(_word);
+        assert_eq!(expected_word_pattern, word_pattern.as_str(),
+            "Obtained pattern {} is not what we were waiting for {}.",
+            expected_word_pattern, word_pattern.as_str());
+    }
+
+    #[test]
+    fn test_store_word_pattern() {
+        let _word = "classification";
+        if let Ok(mut test_dictionary) = Dictionary::new("test", false) {
+            assert!(!test_dictionary.word_exists(_word));
+            test_dictionary.add_word(_word);
+            assert!(test_dictionary.word_exists(_word));
+            let _words = test_dictionary.get_words_with_pattern("0.1.2.3.3.4.5.4.0.2.6.4.7.8");
+            assert!(_words.contains(&_word.to_string()));
+        } else {
+            assert!(false, "Could not create dictionary.")
+        }
+
     }
 }
