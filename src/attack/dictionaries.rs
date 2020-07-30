@@ -1,7 +1,7 @@
 /// Module to deal with words dictionaries.
 ///
 /// A dictionary is a repository of distinct words present in an actual language.
-use std::collections::{HashSet, HashMap, BTreeMap};
+use std::collections::{HashSet, HashMap, BTreeMap, BTreeSet};
 use std::path::Path;
 use std::error::Error;
 use std::fs::File;
@@ -231,13 +231,99 @@ impl Dictionary {
 /// * Word pattern.
 pub fn get_word_pattern<T>(_word: T) -> String 
     where T: AsRef<str> {
-    let mut char_order: BTreeMap<String, Option<HashSet<String>>> = BTreeMap::new();
+    let mut char_order: BTreeSet<String> = BTreeSet::new();
     _word.as_ref().chars()
         .for_each(|_char| {
-            char_order.insert(_char.to_string(), None);
+            char_order.insert(_char.to_string());
         });
-    let chars_indexed: Vec<String> = char_order.keys().collect();
-    let pattern = _word.as_ref().chars().map(|_char| chars_indexed.)
+    let chars_indexed: Vec<&String> = char_order.iter().collect();
+    let pattern: Vec<usize> = _word.as_ref().chars()
+        .map(|_char|
+            chars_indexed.iter().position(|&x|
+                x.as_str().to_string() == _char.to_string()))
+        .filter(|option|
+            match option {
+                None => false,
+                _ => true })
+        .map(|option|
+            match option {
+                Some(x) => x,
+                None => 0 // Never mind, iterator has been previously filtered to not to have Nones.
+            })
+        .collect();
+    let pattern_string = pattern.iter()
+        .map(|x| x.to_string())
+        .collect::<Vec<String>>()
+        .join(".");
+    pattern_string
+}
+
+/// Type to get a set like behaviour keeping track of insertion order.
+///
+/// Unlike Python, Rust has no built-in type to keep insertion ordering in a set like type
+/// so you must implement your own one.
+struct InsertionOrderedSet<T> {
+    elements: Vec<T>
+}
+
+impl<T> InsertionOrderedSet<T> {
+
+    /// Create a new InsertionOrderedSet instance.
+    pub fn new() -> Self {
+        Self {
+            elements: Vec::new()
+        }
+    }
+
+    /// Add new element to set.
+    ///
+    /// If element already exists in set, then it is not added.
+    ///
+    /// # Parameters:
+    /// * new_element: New element to add.
+    pub fn insert(&mut self, new_element: T)
+        where T: PartialEq {
+        if !self.contains(&new_element) {
+            self.elements.push(new_element);
+        }
+    }
+
+    /// Check if element already exists on set.
+    ///
+    /// # Parameters:
+    /// * element_to_find: elemento to look for into set.
+    ///
+    /// # Returns:
+    /// * True if element is already in set and false if not.
+    fn contains(&self, element_to_find: &T) -> bool
+        where T: PartialEq {
+        self.elements.contains(element_to_find)
+    }
+
+    fn iter(&self) -> InsertionOrderedSetIterator<T> {
+        InsertionOrderedSetIterator {
+            set: self,
+            index: 0
+        }
+    }
+}
+
+struct InsertionOrderedSetIterator<'a, T: 'a>{
+    set: &'a InsertionOrderedSet<T>,
+    index: usize
+}
+
+impl<'a, T> Iterator for InsertionOrderedSetIterator<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(value) = self.set.elements.get(self.index) {
+            self.index += 1;
+            Some(value)
+        } else {
+            None
+        }
+    }
 }
 
 /// Extract words from given file.
@@ -824,9 +910,9 @@ nahm.";
         let _word = "HGHHU";
         let expected_word_pattern = "0.1.0.0.2";
         let word_pattern = get_word_pattern(_word);
-        assert_eq!(expected_word_pattern, word_pattern.as_str(),
-            "Obtained pattern {} is not what we were waiting for {}.",
-            expected_word_pattern, word_pattern.as_str());
+        assert_eq!(word_pattern.as_str(), expected_word_pattern,
+                   "Obtained pattern {} is not what we were waiting for {}.",
+                    word_pattern.as_str(), expected_word_pattern );
     }
 
     #[test]
@@ -842,5 +928,20 @@ nahm.";
             assert!(false, "Could not create dictionary.")
         }
 
+    }
+
+    #[test]
+    fn test_insertion_ordered_set() {
+        let expected_list = vec!["A".to_string(), "B".to_string(), "C".to_string()];
+        let mut set: InsertionOrderedSet<String> = InsertionOrderedSet::new();
+        set.insert("A".to_string());
+        set.insert("B".to_string());
+        set.insert("C".to_string());
+        // Now a repeated char.
+        set.insert("B".to_string());
+        let recovered_list: Vec<String> = set.iter().cloned().collect();
+        assert_eq!(recovered_list, expected_list,
+            "Recovered list {:?} but we were expecting {:?}",
+            recovered_list, expected_list);
     }
 }
