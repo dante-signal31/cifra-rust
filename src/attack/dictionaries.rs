@@ -231,7 +231,7 @@ impl Dictionary {
 /// * Word pattern.
 pub fn get_word_pattern<T>(_word: T) -> String 
     where T: AsRef<str> {
-    let mut char_order: BTreeSet<String> = BTreeSet::new();
+    let mut char_order = InsertionOrderedSet::new();
     _word.as_ref().chars()
         .for_each(|_char| {
             char_order.insert(_char.to_string());
@@ -295,12 +295,12 @@ impl<T> InsertionOrderedSet<T> {
     ///
     /// # Returns:
     /// * True if element is already in set and false if not.
-    fn contains(&self, element_to_find: &T) -> bool
+    pub fn contains(&self, element_to_find: &T) -> bool
         where T: PartialEq {
         self.elements.contains(element_to_find)
     }
 
-    fn iter(&self) -> InsertionOrderedSetIterator<T> {
+    pub fn iter(&self) -> InsertionOrderedSetIterator<T> {
         InsertionOrderedSetIterator {
             set: self,
             index: 0
