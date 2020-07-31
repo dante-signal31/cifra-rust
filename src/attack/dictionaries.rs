@@ -918,7 +918,9 @@ nahm.";
     #[test]
     fn test_store_word_pattern() {
         let _word = "classification";
-        if let Ok(mut test_dictionary) = Dictionary::new("test", false) {
+        let (temp_dir, temp_env_database_path) = temporary_database_folder(None);
+        database::create_database();
+        if let Ok(mut test_dictionary) = Dictionary::new("test", true) {
             assert!(!test_dictionary.word_exists(_word));
             test_dictionary.add_word(_word);
             assert!(test_dictionary.word_exists(_word));
