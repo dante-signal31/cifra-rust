@@ -115,10 +115,34 @@ pub fn hack_substitution<T, U>(ciphered_text: T, charset: U) -> Result<(String, 
                 None => { keys_found.insert(key.clone(), *value); }
             }
         });
-        //keys_found.extend(language_keys.clone());
     }
     let (best_key, best_probability) = get_best_key(&keys_found);
     Ok((best_key, best_probability))
+}
+
+/// Get substitution ciphered text key.
+///
+/// Uses a word pattern matching technique to identify used language.
+///
+///  **You should use this function instead of *hack_substitution*.**
+///
+///  Whereas *hack_substitution* uses a sequential approach, this function uses
+///  multiprocessing to improve performance.
+///
+/// # Parameters:
+/// * ciphered_text: Text to be deciphered.
+/// * charset: Charset used for substitution method. Both ends, ciphering
+///     and deciphering, should use the same charset or original text won't be properly
+///     recovered.
+/// * database_path: Absolute pathname to database file. Usually you don't
+///      set this parameter, but it is useful for tests.
+///
+/// # Returns:
+/// * A tuple with substitution key found and success probability.
+pub fn hack_substitution_mp<T, U>(ciphered_text: T, charset: U) -> Result<(String, f64)>
+    where T: AsRef<str>,
+          U: AsRef<str> {
+    unimplemented!()
 }
 
 /// Get every possible mapping for given ciphered words in given language.
@@ -835,6 +859,28 @@ mod tests {
             };
             let timer = Instant::now();
             let found_key = hack_substitution(&ciphered_text, &set.charset)
+                .expect("Error running hacking_substitution().");
+            assert_found_key(&found_key, &set.key, &ciphered_text,
+                             &text, &set.charset);
+            println!("{}", format!("\n\nElapsed time with hack_substitution: {:.2} seconds.", timer.elapsed().as_secs_f64()));
+        }
+    }
+
+    #[test]
+    fn test_hack_substitution_mp() {
+        let test_sets = vec![
+            TestSet::new(ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS, "english", TEST_KEY, TEST_CHARSET),
+            TestSet::new(SPANISH_TEXT_WITH_PUNCTUATIONS_MARKS, "spanish", TEST_KEY_SPANISH, TEST_CHARSET_SPANISH)
+        ];
+        let loaded_dictionaries = LoadedDictionaries::new();
+        for set in test_sets {
+            let text = get_text_to_cipher(&set);
+            let ciphered_text = match cipher(&text, &set.key, &set.charset) {
+                Ok(text) => text,
+                Err(E) => {assert!(false, E); String::new()}
+            };
+            let timer = Instant::now();
+            let found_key = hack_substitution_mp(&ciphered_text, &set.charset)
                 .expect("Error running hacking_substitution().");
             assert_found_key(&found_key, &set.key, &ciphered_text,
                              &text, &set.charset);
