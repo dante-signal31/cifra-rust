@@ -67,5 +67,9 @@ error_chain! {
                 description("Mapping has no more cipherletters.")
                 display("Empty mapping.")
             }
+            NoMappingAvailable(word: String, dictionary: String){
+                description("No candidate mapping was found for word.")
+                display("Word was {} and tried dictionary was {}", word, dictionary)
+            }
     }
 }

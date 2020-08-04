@@ -10,6 +10,7 @@
 /// won/'t be detected.
 use crate::{ErrorKind, Result, ResultExt, Error};
 use crate::attack::dictionaries::{get_words_from_text, Dictionary, get_word_pattern};
+use crate::cipher::substitution::{cipher, decipher};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::fmt;
@@ -103,8 +104,18 @@ pub fn hack_substitution<T, U>(ciphered_text: T, charset: U) -> Result<(String, 
     for language in available_languages {
         let (possible_mappings, _) = get_possible_mappings(&language, &ciphered_words, &charset)?;
         let language_keys = assess_candidate_keys(&ciphered_text, &language,
-                                                  &possible_mappings, &charset);
-        keys_found.extend(language_keys);
+                                                  &possible_mappings, &charset)?;
+        language_keys.iter().for_each(|(key, value)| {
+            match keys_found.get(key) {
+                Some(previous_value) => {
+                    if value > previous_value {
+                        keys_found.insert(key.clone(), *value);
+                    }
+                },
+                None => { keys_found.insert(key.clone(), *value); }
+            }
+        });
+        //keys_found.extend(language_keys.clone());
     }
     let (best_key, best_probability) = get_best_key(&keys_found);
     Ok((best_key, best_probability))
@@ -151,7 +162,7 @@ fn generate_language_mapping<T, U, V>(language: T, ciphered_words: &HashSet<U>, 
     let mut language_mapping = Mapping::new_empty(&charset);
     let dictionary = Dictionary::new(&language, false)?;
     for ciphered_word in ciphered_words {
-        let word_mapping = get_word_mapping(&charset, ciphered_word, &dictionary);
+        let word_mapping = get_word_mapping(&charset, ciphered_word, &dictionary)?;
         language_mapping.reduce_mapping(&word_mapping);
     }
     Ok(language_mapping)
@@ -168,12 +179,13 @@ fn generate_language_mapping<T, U, V>(language: T, ciphered_words: &HashSet<U>, 
 ///
 /// # Returns:
 /// * A Mapping class instance.
-fn get_word_mapping<T, U>(charset: T, ciphered_word: U, dictionary: &Dictionary) -> Mapping
+fn get_word_mapping<T, U>(charset: T, ciphered_word: U, dictionary: &Dictionary) -> Result<Mapping>
     where T: AsRef<str>,
           U: AsRef<str> {
     let mut word_mapping = Mapping::new_empty(&charset);
     let ciphered_word_pattern: String = get_word_pattern(&ciphered_word);
-    let word_candidates = dictionary.get_words_with_pattern(&ciphered_word_pattern);
+    let word_candidates = dictionary.get_words_with_pattern(&ciphered_word_pattern)
+        .chain_err(|| ErrorKind::NoMappingAvailable(ciphered_word.as_ref().to_string(), dictionary.language.clone()))?;
     for (index, char) in ciphered_word.as_ref().chars().enumerate() {
         for word_candidate in word_candidates.iter() {
             if let Some(selected_char) = word_candidate.chars().nth(index) {
@@ -182,7 +194,7 @@ fn get_word_mapping<T, U>(charset: T, ciphered_word: U, dictionary: &Dictionary)
 
         }
     }
-    word_mapping
+    Ok(word_mapping)
 }
 
 /// Assess every possible mapping and get how many recovered words are identifiable
@@ -201,12 +213,92 @@ fn get_word_mapping<T, U>(charset: T, ciphered_word: U, dictionary: &Dictionary)
 ///   comparison sucess for given language. 1 means every deciphered word using
 ///   tested key can be found in given language dictionary.
 fn assess_candidate_keys<T, U, V>(ciphered_text: T, language: U,
-                                  possible_mappings: &Vec<Mapping>, charset: V) -> HashMap<String, f64>
+                                  possible_mappings: &Vec<Mapping>, charset: V) -> Result<HashMap<String, f64>>
     where T: AsRef<str>,
           U: AsRef<str>,
           V: AsRef<str> {
-    unimplemented!()
+    let mut keys_found: HashMap<String, f64> = HashMap::new();
+    for possible_mapping in possible_mappings {
+        match assess_possible_mapping(possible_mapping, &language, &ciphered_text, &charset) {
+            Ok((key, probability)) => { keys_found.insert(key, probability); },
+            Err(E) => match E {
+                Error(ErrorKind::WrongKeyLength(_, _), _) => continue,
+                Error(ErrorKind::WrongKeyRepeatedCharacters(_), _) => continue,
+                error => bail!(error)
+            }
+        };
+    }
+    Ok(keys_found)
 }
+
+/// Convert mapping to a substitution key and check if that key deciphers messages in words
+/// from any know dictionary.
+///
+/// # Parameters:
+/// * possible_mapping: Mapping reduced to maximum.
+/// * language: Language to compare with recovered words.
+/// * ciphered_text: Text to be deciphered.
+/// * charset: Charset used for substitution method. Both ends, ciphering
+///      and deciphering, should use the same charset or original text won't be properly
+///      recovered.
+///
+/// # Returns:
+/// * A tuple with key generated from given mapping and a 0 to 1 float with
+///     comparison success for given language. 1 means every deciphered word using
+///     tested key can be found in given language dictionary.
+fn assess_possible_mapping<T, U, V>(possible_mapping: &Mapping, language: T, ciphered_text: U,
+                                    charset: V) -> Result<(String, f64)>
+    where T: AsRef<str>,
+          U: AsRef<str>,
+          V: AsRef<str> {
+    let key = possible_mapping.generate_key_string();
+    let success = assess_substitution_key(&ciphered_text, &key, &language, &charset)?;
+    Ok((key, success))
+}
+
+/// Decipher text with given key and try to find out if returned text can be identified with given
+/// language.
+///
+/// If given key does not comply with coherence rules then it is silently discarded
+/// returning 0.
+///
+/// # Parameters:
+/// * ciphered_text: Text to be deciphered.
+/// * key: Key to decipher *ciphered_text*.
+/// * language: Language to compare got text.
+/// * charset: Charset used for substitution. Both ends, ciphering
+///      and deciphering, should use the same charset or original text won't be properly
+///      recovered.
+/// # Returns:
+/// * Float from 0 to 1. The higher the frequency of presence of words in language
+///      the higher of this probability.
+fn assess_substitution_key<T, U, V, W>(ciphered_text: T, key: U, language: V, charset: W) -> Result<f64>
+    where T: AsRef<str>,
+          U: AsRef<str>,
+          V: AsRef<str>,
+          W: AsRef<str> {
+    let recovered_text = decipher(&ciphered_text, &key, &charset)?;
+    let words = get_words_from_text(&recovered_text);
+    let frequency = get_candidates_frequency_at_language(&words, &language);
+    frequency
+}
+
+/// Get frequency of presence of words in given language.
+///
+/// # Parameters:
+/// * words: Text words.
+/// * language: Language you want to look into.
+///
+/// # Returns:
+/// * Float from 0 to 1. The higher the frequency of presence of words in language
+///     the higher of this probability.
+fn get_candidates_frequency_at_language<T>(words: &HashSet<String>, language: T) -> Result<f64>
+    where T: AsRef<str> {
+    let dictionary = Dictionary::new(language.as_ref(), false)?;
+    let frequency = dictionary.get_words_presence(&words);
+    Ok(frequency)
+}
+
 
 /// Get key with maximum probability
 ///
@@ -216,7 +308,15 @@ fn assess_candidate_keys<T, U, V>(ciphered_text: T, language: U,
 /// # Returns:
 /// * Tuple with best key and its corresponding probability.
 fn get_best_key(keys_found: &HashMap<String, f64>)-> (String, f64){
-    unimplemented!()
+    let mut best_probability: f64 = 0.0;
+    let mut best_key = String::new();
+    for (key, value) in keys_found {
+        if *value > best_probability {
+            best_probability = *value;
+            best_key = key.clone();
+        }
+    }
+    (best_key, best_probability)
 }
 
 /// Type to manage possible candidates to substitute every cipherletter in charset.
@@ -301,7 +401,9 @@ impl Mapping {
                         let mapping_set_clone: HashSet<String> = mapping_set.iter().map(|x| x.as_ref().to_string()).collect();
                         self.mapping.insert(key.as_ref().to_string(), Some(mapping_set_clone));
                     },
-                    None =>  {self.mapping.insert(key.as_ref().to_string(), None); }
+                    None =>  {
+                        // self.mapping.insert(key.as_ref().to_string(), None);
+                        }
                 }
             }
         }
@@ -901,59 +1003,75 @@ mod tests {
 
     #[test]
     fn test_get_possible_mappings_with_empties() {
-        let mut mapping = mapping!(TEST_CHARSET,
+        let THIS_TEST_CHARSET = "12345";
+        let mut mapping = mapping!(THIS_TEST_CHARSET,
                                 {"1": {"a", "b"},
                                                "2": {"c"},
                                                "3": {"d"},
                                                "4": {"e", "f"},
                                                "5": {"g", "h"}});
         mapping.set("1.5", None);
+        let mut expected_mapping_1 = mapping!(THIS_TEST_CHARSET, {"1": {"a"},
+                              "2": {"c"},
+                              "3": {"d"},
+                              "4": {"e"},
+                              "5": {"g"}});
+        expected_mapping_1.set("1.5", None);
+        let mut expected_mapping_2 =  mapping!(THIS_TEST_CHARSET, {"1": {"a"},
+                                    "2": {"c"},
+                                    "3": {"d"},
+                                    "4": {"f"},
+                                    "5": {"g"}});
+        expected_mapping_2.set("1.5", None);
+        let mut expected_mapping_3 = mapping!(THIS_TEST_CHARSET, {"1": {"b"},
+                                      "2": {"c"},
+                                      "3": {"d"},
+                                      "4": {"e"},
+                                      "5": {"g"}});
+        expected_mapping_3.set("1.5", None);
+        let mut expected_mapping_4 =  mapping!(THIS_TEST_CHARSET, {"1": {"b"},
+                                        "2": {"c"},
+                                        "3": {"d"},
+                                        "4": {"f"},
+                                        "5": {"g"}});
+        expected_mapping_4.set("1.5", None);
+        let mut expected_mapping_5 = mapping!(THIS_TEST_CHARSET, {"1": {"a"},
+                              "2": {"c"},
+                              "3": {"d"},
+                              "4": {"e"},
+                              "5": {"h"}});
+        expected_mapping_5.set("1.5", None);
+        let mut expected_mapping_6 = mapping!(THIS_TEST_CHARSET, {"1": {"a"},
+                                    "2": {"c"},
+                                    "3": {"d"},
+                                    "4": {"f"},
+                                    "5": {"h"}});
+        expected_mapping_6.set("1.5", None);
+        let mut expected_mapping_7 = mapping!(THIS_TEST_CHARSET, {"1": {"b"},
+                                      "2": {"c"},
+                                      "3": {"d"},
+                                      "4": {"e"},
+                                      "5": {"h"}});
+        expected_mapping_7.set("1.5", None);
+        let mut expected_mapping_8 =  mapping!(THIS_TEST_CHARSET, {"1": {"b"},
+                                        "2": {"c"},
+                                        "3": {"d"},
+                                        "4": {"f"},
+                                        "5": {"h"}});
+        expected_mapping_8.set("1.5", None);
         let mut expected_list = vec![
-            mapping!(TEST_CHARSET, {"1": {"a"},
-                              "2": {"c"},
-                              "3": {"d"},
-                              "4": {"e"},
-                              "5": {"g"}}),
-            mapping!(TEST_CHARSET, {"1": {"a"},
-                                    "2": {"c"},
-                                    "3": {"d"},
-                                    "4": {"f"},
-                                    "5": {"g"}}),
-
-            mapping!(TEST_CHARSET, {"1": {"b"},
-                                      "2": {"c"},
-                                      "3": {"d"},
-                                      "4": {"e"},
-                                      "5": {"g"}}),
-            mapping!(TEST_CHARSET, {"1": {"b"},
-                                        "2": {"c"},
-                                        "3": {"d"},
-                                        "4": {"f"},
-                                        "5": {"g"}}),
-            mapping!(TEST_CHARSET, {"1": {"a"},
-                              "2": {"c"},
-                              "3": {"d"},
-                              "4": {"e"},
-                              "5": {"h"}}),
-            mapping!(TEST_CHARSET, {"1": {"a"},
-                                    "2": {"c"},
-                                    "3": {"d"},
-                                    "4": {"f"},
-                                    "5": {"h"}}),
-            mapping!(TEST_CHARSET, {"1": {"b"},
-                                      "2": {"c"},
-                                      "3": {"d"},
-                                      "4": {"e"},
-                                      "5": {"h"}}),
-            mapping!(TEST_CHARSET, {"1": {"b"},
-                                        "2": {"c"},
-                                        "3": {"d"},
-                                        "4": {"f"},
-                                        "5": {"h"}}),
+            expected_mapping_1,
+            expected_mapping_2,
+            expected_mapping_3,
+            expected_mapping_4,
+            expected_mapping_5,
+            expected_mapping_6,
+            expected_mapping_7,
+            expected_mapping_8,
         ];
-        expected_list.iter_mut().for_each(|mapping| {mapping.set("1.5", None);});
         let recovered_mappings = mapping.get_possible_mappings();
         assert_eq!(expected_list.len(), recovered_mappings.len());
+        let missing: Vec<Mapping> = expected_list.iter().cloned().filter(|_mapping| !recovered_mappings.contains(&_mapping)).collect();
         assert!(expected_list.iter().all(|_mapping| recovered_mappings.contains(&_mapping)));
     }
 

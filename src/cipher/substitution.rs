@@ -63,9 +63,13 @@ pub fn cipher<T, U, V>(text: T, key: U, charset: V) -> Result<String>
     check_substitution_key(&key, &charset)?;
     let mut ciphered_message: String = String::new();
     let key_chars: Vec<char> = key.as_ref().chars().collect();
+    let charset_debug: Vec<char> =  charset.as_ref().chars().collect();
     for _char in text.as_ref().chars() {
         if charset.as_ref().contains(_char.to_lowercase().to_string().as_str()) {
-            let charset_index = match charset.as_ref().find(_char.to_lowercase().to_string().as_str()){
+            let lowercase_char_debug: Vec<char> = _char.to_lowercase().collect();
+            let char_to_find = lowercase_char_debug[0];
+            let charset_vec: Vec<char> = charset.as_ref().chars().collect();
+            let charset_index = match charset_vec.iter().position(|ch| ch.to_string() == char_to_find.to_string()){
                 Some(index) => index,
                 None => bail!(ErrorKind::CharacterMappingError(_char.to_lowercase().to_string()))
             };
@@ -109,9 +113,12 @@ pub fn decipher<T, U, V>(ciphered_text: T, key: U, charset: V) -> Result<String>
     check_substitution_key(&key, &charset)?;
     let mut deciphered_message = String::new();
     let charset_chars: Vec<char> = charset.as_ref().chars().collect();
+    let key_vec: Vec<char> = key.as_ref().chars().collect();
     for ciphered_char in ciphered_text.as_ref().chars() {
+        let lowercase_char_debug: Vec<char> = ciphered_char.to_lowercase().collect();
+        let char_to_find = lowercase_char_debug[0];
         if key.as_ref().contains(ciphered_char.to_lowercase().to_string().as_str()) {
-            let key_index = match key.as_ref().find(ciphered_char.to_lowercase().to_string().as_str()) {
+            let key_index = match key_vec.iter().position(|ch| ch.to_string() == char_to_find.to_string()) {
                 Some(index) => index,
                 None => bail!(ErrorKind::CharacterMappingError(ciphered_char.to_lowercase().to_string()))
             };

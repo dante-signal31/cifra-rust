@@ -98,6 +98,7 @@ pub struct NewLanguage<'a> {
 pub struct Word {
     pub id: i32,
     pub word: String,
+    pub word_pattern: String,
     pub language_id: i32
 }
 
@@ -105,6 +106,7 @@ pub struct Word {
 #[table_name="words"]
 pub struct NewWord<'a> {
     pub word: &'a str,
+    pub word_pattern: String,
     pub language_id: i32
 }
 

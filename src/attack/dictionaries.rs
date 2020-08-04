@@ -110,6 +110,7 @@ impl Dictionary {
         where T: AsRef<str> {
         let new_word = NewWord {
             word: _word.as_ref(),
+            word_pattern: get_word_pattern(_word.as_ref()),
             language_id: self.language_id
         };
         diesel::insert_into(words::table)
@@ -127,7 +128,8 @@ impl Dictionary {
         _words.iter().map(|new_word| {
             let word_to_add = NewWord {
                 word: new_word,
-                language_id: self.language_id
+                word_pattern: get_word_pattern(new_word),
+                language_id: self.language_id,
             };
             word_list.push(word_to_add);
         }).for_each(drop);
@@ -214,9 +216,32 @@ impl Dictionary {
     ///
     /// # Returns:
     /// * List of words at dictionary with given pattern.
-    pub fn get_words_with_pattern<T>(&self, pattern: T) -> Vec<String>
+    pub fn get_words_with_pattern<T>(&self, pattern: T) -> Result<Vec<String>>
         where T: AsRef<str> {
-        unimplemented!()
+        // words::table.filter(word.eq(_word.as_ref()).and(language_id.eq(&self.language_id)))
+        let words_result = words::table.filter(word_pattern.eq(pattern.as_ref()))
+            .select(word)
+            .get_results::<String>(self.session());
+        match words_result {
+            Ok(_words) => Ok(_words),
+            Err(E) => bail!(format!("{}",E))
+        }
+    }
+
+    /// Get how many words of given set are really present in this dictionary.
+    ///
+    /// # Parameters:
+    /// * words: Set of words.
+    ///
+    /// # Returns:
+    /// * A float between 0 and 1 being 1 as every word in set is present at dictionary.
+    pub fn get_words_presence(&self, _words: &HashSet<String>) -> f64 {
+        let total_words = _words.len();
+        let current_hits: usize = _words.iter()
+            .map(|_word| if self.word_exists(_word) { 1 } else { 0 })
+            .sum();
+        let presence: f64 = current_hits as f64 / total_words as f64;
+        presence
     }
 }
 
@@ -909,10 +934,10 @@ nahm.";
     fn test_get_word_pattern() {
         let _word = "HGHHU";
         let expected_word_pattern = "0.1.0.0.2";
-        let word_pattern = get_word_pattern(_word);
-        assert_eq!(word_pattern.as_str(), expected_word_pattern,
+        let _word_pattern = get_word_pattern(_word);
+        assert_eq!(_word_pattern.as_str(), expected_word_pattern,
                    "Obtained pattern {} is not what we were waiting for {}.",
-                    word_pattern.as_str(), expected_word_pattern );
+                    _word_pattern.as_str(), expected_word_pattern );
     }
 
     #[test]
@@ -924,7 +949,7 @@ nahm.";
             assert!(!test_dictionary.word_exists(_word));
             test_dictionary.add_word(_word);
             assert!(test_dictionary.word_exists(_word));
-            let _words = test_dictionary.get_words_with_pattern("0.1.2.3.3.4.5.4.0.2.6.4.7.8");
+            let _words = test_dictionary.get_words_with_pattern("0.1.2.3.3.4.5.4.0.2.6.4.7.8").expect("No word found with that pattern");
             assert!(_words.contains(&_word.to_string()));
         } else {
             assert!(false, "Could not create dictionary.")
