@@ -15,6 +15,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::fmt;
 use std::iter::FromIterator;
+use rayon::prelude::*;
 
 /// Creates a mapping instance using a content description similar to python dicts.
 ///
@@ -102,22 +103,30 @@ pub fn hack_substitution<T, U>(ciphered_text: T, charset: U) -> Result<(String, 
         .chain_err(|| ErrorKind::DatabaseError("We could not get dictionaries names."))?;
     let mut keys_found: HashMap<String, f64> = HashMap::new();
     for language in available_languages {
-        let (possible_mappings, _) = get_possible_mappings(&language, &ciphered_words, &charset)?;
-        let language_keys = assess_candidate_keys(&ciphered_text, &language,
-                                                  &possible_mappings, &charset)?;
-        language_keys.iter().for_each(|(key, value)| {
-            match keys_found.get(key) {
-                Some(previous_value) => {
-                    if value > previous_value {
-                        keys_found.insert(key.clone(), *value);
-                    }
-                },
-                None => { keys_found.insert(key.clone(), *value); }
-            }
-        });
+        let language_probabilities = get_keys_probabilities(&ciphered_text, &charset, &ciphered_words, &language)?;
+        keys_found.extend(language_probabilities.into_iter());
     }
     let (best_key, best_probability) = get_best_key(&keys_found);
     Ok((best_key, best_probability))
+}
+
+fn get_keys_probabilities<T, U>(ciphered_text: &T, charset: &U, ciphered_words: &HashSet<String>, language: &String) -> Result<HashMap<String, f64>>
+    where T: AsRef<str>, U: AsRef<str> {
+    let mut keys_found: HashMap<String, f64> = HashMap::new();
+    let (possible_mappings, _) = get_possible_mappings(&language, &ciphered_words, &charset)?;
+    let language_keys = assess_candidate_keys(&ciphered_text, &language,
+                                              &possible_mappings, &charset)?;
+    language_keys.iter().for_each(|(key, value)| {
+        match keys_found.get(key) {
+            Some(previous_value) => {
+                if value > previous_value {
+                    keys_found.insert(key.clone(), *value);
+                }
+            },
+            None => { keys_found.insert(key.clone(), *value); }
+        }
+    });
+    Ok(keys_found)
 }
 
 /// Get substitution ciphered text key.
@@ -140,9 +149,19 @@ pub fn hack_substitution<T, U>(ciphered_text: T, charset: U) -> Result<(String, 
 /// # Returns:
 /// * A tuple with substitution key found and success probability.
 pub fn hack_substitution_mp<T, U>(ciphered_text: T, charset: U) -> Result<(String, f64)>
-    where T: AsRef<str>,
-          U: AsRef<str> {
-    unimplemented!()
+    where T: AsRef<str> + std::marker::Sync,
+          U: AsRef<str> + std::marker::Sync {
+    let ciphered_words = get_words_from_text(&ciphered_text);
+    let available_languages = Dictionary::get_dictionaries_names()
+        .chain_err(|| ErrorKind::DatabaseError("We could not get dictionaries names."))?;
+    let mut keys_found: HashMap<String, f64> = HashMap::new();
+    let languages_probabilities: Vec<Result<HashMap<String, f64>>> = available_languages.par_iter().map(|language| get_keys_probabilities(&ciphered_text, &charset, &ciphered_words, &language)).collect();
+    for language_probability in languages_probabilities {
+        let probabilities = language_probability?;
+        keys_found.extend(probabilities.into_iter());
+    }
+    let (best_key, best_probability) = get_best_key(&keys_found);
+    Ok((best_key, best_probability))
 }
 
 /// Get every possible mapping for given ciphered words in given language.
