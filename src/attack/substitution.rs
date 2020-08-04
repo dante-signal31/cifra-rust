@@ -395,15 +395,14 @@ impl Mapping {
               U: AsRef<str> {
         let keys_list: Vec<String> = mapping_dict.keys().map(|x| x.as_ref().to_string()).collect();
         for (key, value) in mapping_dict.iter() {
+            let key_clone = key.as_ref().clone();
             if keys_list.contains(&key.as_ref().to_string()){
                 match value {
                     Some(mapping_set) => {
                         let mapping_set_clone: HashSet<String> = mapping_set.iter().map(|x| x.as_ref().to_string()).collect();
                         self.mapping.insert(key.as_ref().to_string(), Some(mapping_set_clone));
                     },
-                    None =>  {
-                        // self.mapping.insert(key.as_ref().to_string(), None);
-                        }
+                    None =>  {  }
                 }
             }
         }
@@ -609,7 +608,8 @@ impl Mapping {
 
     /// Inserts a cipherletter-candidates pair into the mappping.
     ///
-    /// If the mapping did not have this cipherletter present, [`None`] is returned.
+    /// If the mapping did not have this cipherletter present, [`None`] is returned, but key and
+    /// value are inserted.
     ///
     /// If the mappping did have this cipherletter present, the value is updated, and the old
     /// value is returned. The key is not updated, though.
@@ -1016,49 +1016,41 @@ mod tests {
                               "3": {"d"},
                               "4": {"e"},
                               "5": {"g"}});
-        expected_mapping_1.set("1.5", None);
         let mut expected_mapping_2 =  mapping!(THIS_TEST_CHARSET, {"1": {"a"},
                                     "2": {"c"},
                                     "3": {"d"},
                                     "4": {"f"},
                                     "5": {"g"}});
-        expected_mapping_2.set("1.5", None);
         let mut expected_mapping_3 = mapping!(THIS_TEST_CHARSET, {"1": {"b"},
                                       "2": {"c"},
                                       "3": {"d"},
                                       "4": {"e"},
                                       "5": {"g"}});
-        expected_mapping_3.set("1.5", None);
         let mut expected_mapping_4 =  mapping!(THIS_TEST_CHARSET, {"1": {"b"},
                                         "2": {"c"},
                                         "3": {"d"},
                                         "4": {"f"},
                                         "5": {"g"}});
-        expected_mapping_4.set("1.5", None);
         let mut expected_mapping_5 = mapping!(THIS_TEST_CHARSET, {"1": {"a"},
                               "2": {"c"},
                               "3": {"d"},
                               "4": {"e"},
                               "5": {"h"}});
-        expected_mapping_5.set("1.5", None);
         let mut expected_mapping_6 = mapping!(THIS_TEST_CHARSET, {"1": {"a"},
                                     "2": {"c"},
                                     "3": {"d"},
                                     "4": {"f"},
                                     "5": {"h"}});
-        expected_mapping_6.set("1.5", None);
         let mut expected_mapping_7 = mapping!(THIS_TEST_CHARSET, {"1": {"b"},
                                       "2": {"c"},
                                       "3": {"d"},
                                       "4": {"e"},
                                       "5": {"h"}});
-        expected_mapping_7.set("1.5", None);
         let mut expected_mapping_8 =  mapping!(THIS_TEST_CHARSET, {"1": {"b"},
                                         "2": {"c"},
                                         "3": {"d"},
                                         "4": {"f"},
                                         "5": {"h"}});
-        expected_mapping_8.set("1.5", None);
         let mut expected_list = vec![
             expected_mapping_1,
             expected_mapping_2,
