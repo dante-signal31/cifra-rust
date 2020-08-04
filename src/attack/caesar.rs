@@ -1,14 +1,14 @@
-use std::collections::HashMap;
+// use std::collections::HashMap;
 
 // use rayon::prelude::*;
 
 use crate::Result;
-use crate::attack::dictionaries::{IdentifiedLanguage, identify_language};
+use crate::attack::dictionaries::IdentifiedLanguage;
 use crate::attack::simple_attacks::brute_force as simple_brute_force;
 use crate::attack::simple_attacks::brute_force_mp as simple_brute_force_mp;
-use crate::attack::simple_attacks::{assess_key, Parameters, ParameterValue};
+use crate::attack::simple_attacks::{assess_key, Parameters};
 use crate::cipher::caesar::decipher_par;
-use crate::cipher::common::DEFAULT_CHARSET;
+// use crate::cipher::common::DEFAULT_CHARSET;
 
 
 /// Get Caesar ciphered text key.

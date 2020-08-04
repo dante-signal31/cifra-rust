@@ -1,9 +1,9 @@
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryInto;
 use std::ops::Add;
 use crate::cipher::cryptomath::{modulus, find_mod_inverse};
-use std::error::Error;
-use std::fmt;
-use std::fmt::Formatter;
+// use std::error::Error;
+// use std::fmt;
+// use std::fmt::Formatter;
 use crate::{ErrorKind, Result, ResultExt};
 
 /// Common functions to be used across cipher modules.

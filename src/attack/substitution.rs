@@ -10,10 +10,10 @@
 /// won/'t be detected.
 use crate::{ErrorKind, Result, ResultExt, Error};
 use crate::attack::dictionaries::{get_words_from_text, Dictionary, get_word_pattern};
-use crate::cipher::substitution::{cipher, decipher};
+use crate::cipher::substitution::decipher;
 use std::collections::{HashMap, HashSet};
-use std::fmt::{Debug, Formatter};
-use std::fmt;
+use std::fmt::Debug;
+// use std::fmt;
 use std::iter::FromIterator;
 use rayon::prelude::*;
 
@@ -264,7 +264,7 @@ fn assess_candidate_keys<T, U, V>(ciphered_text: T, language: U,
     for possible_mapping in possible_mappings {
         match assess_possible_mapping(possible_mapping, &language, &ciphered_text, &charset) {
             Ok((key, probability)) => { keys_found.insert(key, probability); },
-            Err(E) => match E {
+            Err(e) => match e {
                 Error(ErrorKind::WrongKeyLength(_, _), _) => continue,
                 Error(ErrorKind::WrongKeyRepeatedCharacters(_), _) => continue,
                 error => bail!(error)
@@ -438,7 +438,6 @@ impl Mapping {
               U: AsRef<str> {
         let keys_list: Vec<String> = mapping_dict.keys().map(|x| x.as_ref().to_string()).collect();
         for (key, value) in mapping_dict.iter() {
-            let key_clone = key.as_ref().clone();
             if keys_list.contains(&key.as_ref().to_string()){
                 match value {
                     Some(mapping_set) => {
@@ -527,7 +526,7 @@ impl Mapping {
     ///
     /// # Returns:
     /// * A list of mapping candidates.
-    fn _get_possible_mappings(&self, mut mapping: Option<&Mapping>)-> Vec<Mapping> {
+    fn _get_possible_mappings(&self, mapping: Option<&Mapping>)-> Vec<Mapping> {
         let mut mapping_list: Vec<Mapping> = Vec::new();
         let mut step_mapping = match mapping {
             None => Mapping::new(self.get_current_content(), &self.charset),

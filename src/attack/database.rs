@@ -3,15 +3,15 @@ use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use dotenv::dotenv;
 use std::env;
-use std::env::VarError;
+// use std::env::VarError;
 
 use crate::schema::languages;
-use crate::schema::languages::dsl::*;
+// use crate::schema::languages::dsl::*;
 use crate::schema::words;
-use crate::schema::words::dsl::*;
+// use crate::schema::words::dsl::*;
 
 use crate::{ErrorKind, Result, ResultExt};
-use std::fmt::Error;
+// use std::fmt::Error;
 
 embed_migrations!();
 

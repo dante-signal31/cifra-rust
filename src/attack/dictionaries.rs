@@ -1,27 +1,25 @@
 /// Module to deal with words dictionaries.
 ///
 /// A dictionary is a repository of distinct words present in an actual language.
-use std::collections::{HashSet, HashMap, BTreeMap, BTreeSet};
+use std::collections::{HashSet, HashMap};
 use std::path::Path;
-use std::error::Error;
+// use std::error::Error;
 use std::fs::File;
-use std::fmt;
-use std::fmt::{Display, Formatter};
+// use std::fmt;
+// use std::fmt::{Display, Formatter};
 use diesel::RunQueryDsl;
 use diesel::prelude::*;
 
-use crate::attack::database::{Database, DatabaseSession, Language, NewLanguage, NewWord};
+use crate::attack::database::{Database, DatabaseSession, NewLanguage, NewWord};
 use crate::{Result, ErrorKind, ResultExt};
-use crate::error_chain::ChainedError;
-use crate::schema::*;
+// use crate::schema::*;
 use crate::schema::languages;
 use crate::schema::languages::dsl::*;
 use crate::schema::words;
 use crate::schema::words::dsl::*;
-use diesel::result::Error::DatabaseError;
+// use diesel::result::Error::DatabaseError;
 use regex::Regex;
 use std::io::Read;
-use std::ops::Index;
 
 
 /// Cifra stores word dictionaries in a local database. This class
@@ -224,7 +222,7 @@ impl Dictionary {
             .get_results::<String>(self.session());
         match words_result {
             Ok(_words) => Ok(_words),
-            Err(E) => bail!(format!("{}",E))
+            Err(e) => bail!(format!("{}",e))
         }
     }
 

@@ -1,6 +1,6 @@
 /// Library to cipher and decipher texts using Affine method.
 use std::convert::TryInto;
-use std::fmt;
+// use std::fmt;
 use std::fmt::{Display, Formatter};
 
 use rand;

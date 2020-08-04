@@ -10,11 +10,11 @@
 /// won't be detected.
 
 use crate::Result;
-use crate::attack::dictionaries::{IdentifiedLanguage, identify_language};
+use crate::attack::dictionaries::IdentifiedLanguage;
 use crate::attack::simple_attacks::brute_force as simple_brute_force;
 use crate::attack::simple_attacks::brute_force_mp as simple_brute_force_mp;
-use crate::attack::simple_attacks::{assess_key, Parameters, ParameterValue};
-use crate::cipher::affine::{decipher_par, validate_key, WrongAffineKey};
+use crate::attack::simple_attacks::{assess_key, Parameters};
+use crate::cipher::affine::{decipher_par, validate_key};
 
 
 /// Get Affine ciphered text key.
@@ -52,7 +52,7 @@ fn brute_force<T, U>(ciphered_text: T, charset: U)-> Result<usize>
 /// Whereas *brute_force* uses a sequential approach, this function uses
 /// multiprocessing to improve performance.
 ///
-/// # Paramters:
+/// # Parameters:
 /// * ciphered_text: Text to be deciphered.
 /// * charset: Charset used for Affine method substitution. Both ends, ciphering
 ///      and deciphering, should use the same charset or original text won't be properly

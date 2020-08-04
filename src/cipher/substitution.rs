@@ -2,7 +2,7 @@
 use crate::{ErrorKind, Result, ResultExt, Error};
 use std::collections::HashSet;
 
-const DEFAULT_CHARSET: &'static str = "abcdefghijklmnopqrstuvwxyz";
+// const DEFAULT_CHARSET: &'static str = "abcdefghijklmnopqrstuvwxyz";
 
 /// Check used key is a valid one for substitution method with this charset.
 ///
@@ -63,7 +63,6 @@ pub fn cipher<T, U, V>(text: T, key: U, charset: V) -> Result<String>
     check_substitution_key(&key, &charset)?;
     let mut ciphered_message: String = String::new();
     let key_chars: Vec<char> = key.as_ref().chars().collect();
-    let charset_debug: Vec<char> =  charset.as_ref().chars().collect();
     for _char in text.as_ref().chars() {
         if charset.as_ref().contains(_char.to_lowercase().to_string().as_str()) {
             let lowercase_char_debug: Vec<char> = _char.to_lowercase().collect();
