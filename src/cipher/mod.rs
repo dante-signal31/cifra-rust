@@ -4,3 +4,4 @@ pub mod common;
 mod cryptomath;
 pub mod substitution;
 pub mod transposition;
+pub mod vigenere;
