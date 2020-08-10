@@ -790,13 +790,6 @@ impl Extractor for HashSet<char> {
     }
 }
 
-
-// impl Debug for Mapping {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-//         unimplemented!()
-//     }
-// }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -945,12 +938,6 @@ mod tests {
         };
         assert_eq!(deciphered_text, original_text.as_ref());
     }
-
-    // #[test]
-    // fn test_get_possible_mappings() {
-    //     let mut mapping_content: HashMap<String, Vec<String>> = HashMap::new();
-    //     mapping_content.insert("1".to_string(), vec![""])
-    // }
 
     #[test]
     fn test_clean_redundancies() {
