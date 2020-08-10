@@ -711,18 +711,6 @@ impl Mapping {
                 *entry = Some(new_content);
             }
         };
-
-        // let mut candidates_ref = self.mapping.get_mut(key.as_ref());
-        // if let Some(candidates_option) = candidates_ref.as_mut() {
-        //     match candidates_option {
-        //         Some(candidates) => { candidates.insert(value.as_ref().to_string()); },
-        //         None => {
-        //             self.create_new_single_entry(&key, &value);
-        //         }
-        //     }
-        // } else {
-        //     self.create_new_single_entry(&key, &value);
-        // }
     }
 
     /// Create a new set at given cipherletter just with one candidate.
