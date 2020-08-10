@@ -12,6 +12,7 @@ use crate::{ErrorKind, Result, ResultExt, Error};
 use crate::attack::dictionaries::{get_words_from_text, Dictionary, get_word_pattern};
 use crate::cipher::substitution::decipher;
 use std::collections::{HashMap, HashSet};
+use std::convert::From;
 use std::fmt::Debug;
 // use std::fmt;
 use std::iter::FromIterator;
@@ -47,11 +48,11 @@ macro_rules! mapping {
             }
         ) => {
                 {
-                    let mut mapping_content = HashMap::new();
+                    let mut mapping_content: HashMap<char, Option<HashSet<char>>> = HashMap::new();
                     $(
-                        let values_list = vec![$($value), +];
-                        let values_iter = values_list.iter();
-                        mapping_content.insert($key, Some(HashSet::from_iter(values_iter)));
+                        let values_list = vec![$(char::fromStr($value)), +];
+                        let values_iter = values_list.into_iter();
+                        mapping_content.insert(char::fromStr($key), Some(HashSet::from_iter(values_iter)));
                       )+
                     let mapping = Mapping::new(&mapping_content, $charset);
                     mapping
@@ -64,9 +65,9 @@ macro_rules! mapping {
             }
         ) => {
                 {
-                    let mut mapping_content: HashMap<String, Option<HashSet<String>>> = HashMap::new();
+                    let mut mapping_content: HashMap<char, Option<HashSet<char>>> = HashMap::new();
                     $(
-                        mapping_content.insert($key, None);
+                        mapping_content.insert(char::fromStr($key), None);
                       )+
                     let mapping = Mapping::new(&mapping_content, $charset);
                     mapping
@@ -74,7 +75,15 @@ macro_rules! mapping {
         };
     }
 
+trait FromStr<T> {
+    fn fromStr(s: T) -> Self;
+}
 
+impl FromStr<&str> for char {
+    fn fromStr(s: &str) -> Self {
+        s.chars().next().expect(format!("Could not create char from given string: {}", s).as_str())
+    }
+}
 
 /// Get substitution ciphered text key.
 ///
@@ -228,10 +237,10 @@ fn get_word_mapping<T, U>(charset: T, ciphered_word: U, dictionary: &Dictionary)
     let word_candidates = dictionary.get_words_with_pattern(&ciphered_word_pattern)
         .chain_err(|| ErrorKind::NoMappingAvailable(ciphered_word.as_ref().to_string(), dictionary.language.clone()))?;
     for (index, char) in ciphered_word.as_ref().chars().enumerate() {
-        let char_string = char.to_string();
+        // let char_string = char.to_string();
         for word_candidate in word_candidates.iter() {
             if let Some(selected_char) = word_candidate.chars().nth(index) {
-                word_mapping.add(&char_string, selected_char.to_string());
+                word_mapping.add(char, selected_char);
                 // word_mapping.add(&char.to_string(), selected_char.to_string());
             }
 
@@ -368,7 +377,7 @@ fn get_best_key(keys_found: &HashMap<String, f64>)-> (String, f64){
 /// letters candidates.
 #[derive(Debug)]
 struct Mapping {
-    mapping: HashMap<String, Option<HashSet<String>>>,
+    mapping: HashMap<char, Option<HashSet<char>>>,
     charset: String
 }
 
@@ -382,7 +391,7 @@ impl Mapping {
     ///     recovered.
     fn init_mapping(&mut self){
         for char in self.charset.chars() {
-            self.mapping.insert(char.to_string(), None);
+            self.mapping.insert(char, None);
         }
     }
 
@@ -415,10 +424,8 @@ impl Mapping {
     ///
     /// # Returns:
     /// * A Mapping instance loaded with mapping dict content.
-    pub fn new<T, U, V>(mapping_dict: &HashMap<T, Option<HashSet<U>>>, charset: V)-> Self
-        where T: AsRef<str>,
-              U: AsRef<str>,
-              V: AsRef<str> {
+    pub fn new<T>(mapping_dict: &HashMap<char, Option<HashSet<char>>>, charset: T)-> Self
+        where T: AsRef<str> {
         let mut mapping = Self::new_empty(charset);
         mapping.load_content(mapping_dict);
         mapping
@@ -433,16 +440,14 @@ impl Mapping {
     ///
     /// # Parameters:
     /// * mapping_dict: Content to load.
-    fn load_content<T, U>(&mut self, mapping_dict: &HashMap<T, Option<HashSet<U>>>)
-        where T: AsRef<str>,
-              U: AsRef<str> {
-        let keys_list: Vec<String> = mapping_dict.keys().map(|x| x.as_ref().to_string()).collect();
+    fn load_content(&mut self, mapping_dict: &HashMap<char, Option<HashSet<char>>>) {
+        let keys_list: Vec<&char> = mapping_dict.keys().map(|x| x).collect();
         for (key, value) in mapping_dict.iter() {
-            if keys_list.contains(&key.as_ref().to_string()){
+            if keys_list.contains(&key){
                 match value {
                     Some(mapping_set) => {
-                        let mapping_set_clone: HashSet<String> = mapping_set.iter().map(|x| x.as_ref().to_string()).collect();
-                        self.mapping.insert(key.as_ref().to_string(), Some(mapping_set_clone));
+                        let mapping_set_clone: HashSet<char> = mapping_set.iter().map(|x| *x).collect();
+                        self.mapping.insert(*key, Some(mapping_set_clone));
                     },
                     None =>  {  }
                 }
@@ -454,7 +459,7 @@ impl Mapping {
     ///
     /// # Returns:
     /// * Dict's keys are cipherletters and values are sets of mapping char candidates.
-    fn get_current_content(&self)-> &HashMap<String, Option<HashSet<String>>> {
+    fn get_current_content(&self)-> &HashMap<char, Option<HashSet<char>>> {
         &self.mapping
     }
 
@@ -462,8 +467,8 @@ impl Mapping {
     ///
     /// # Returns:
     /// * A list with cipherletters registered in this mapping.
-    fn cipherletters(&self)-> Vec<String>{
-        let cipherletters_list: Vec<String> = self.mapping.keys().cloned().collect();
+    fn cipherletters(&self)-> Vec<char>{
+        let cipherletters_list: Vec<char> = self.mapping.keys().cloned().collect();
         cipherletters_list
     }
 
@@ -477,18 +482,18 @@ impl Mapping {
     /// # Returns:
     /// * Generated key string.
     fn generate_key_string(&self)-> String {
-        let mut key_list: Vec<String> = Vec::new();
+        let mut key_list: Vec<char> = Vec::new();
         for clear_char in self.charset.chars() {
             let mut char_found = false;
-            for (key, value_set) in self.mapping.iter() {
+            for (&key, value_set) in self.mapping.iter() {
                 match value_set {
                     Some(set) => {
                         // Use this method with already reduced mappings because only
                         // first element of every set will be taken.
                         let value = set.get_first_element().unwrap();
-                        if value == clear_char.to_string() {
+                        if value == clear_char {
                             char_found = true;
-                            key_list.push(key.clone());
+                            key_list.push(key);
                             break;
                         }
                     },
@@ -496,12 +501,11 @@ impl Mapping {
                 }
             }
             if !char_found {
-                let char_string = clear_char.to_string();
-                key_list.push(char_string);
+                key_list.push(clear_char);
             }
         }
         let mut string_to_return = String::new();
-        key_list.iter().for_each(|x| string_to_return.push_str(x));
+        key_list.iter().for_each(|x| string_to_return.push_str(x.to_string().as_str()));
         string_to_return
     }
 
@@ -538,8 +542,8 @@ impl Mapping {
                 Some(set) => {
                     for candidate in set.iter() {
                         for partial_mapping in partial_mappings.iter() {
-                            let cloned_char = char.clone();
-                            let mut current_mapping = mapping!(&self.charset, {cloned_char : {candidate}});
+                            let mut current_mapping = Mapping::new_empty(&self.charset);
+                            current_mapping.add(char, *candidate);
                             current_mapping.load_content(partial_mapping.get_current_content());
                             mapping_list.push(current_mapping);
                         }
@@ -547,8 +551,9 @@ impl Mapping {
                 },
                 None => {
                     for partial_mapping in partial_mappings.iter() {
-                        let cloned_char = char.clone();
-                        let mut current_mapping = mapping!(&self.charset, {cloned_char : {}});
+                        let char_string = char.to_string();
+                        let char_str = char_string.as_str();
+                        let mut current_mapping = mapping!(&self.charset, {char_str : {}});
                         current_mapping.load_content(partial_mapping.get_current_content());
                         mapping_list.push(current_mapping);
                     }
@@ -567,23 +572,23 @@ impl Mapping {
     fn reduce_mapping(&mut self, word_mapping: &Mapping) {
         for cipherletter in self.cipherletters()  {
             // Unwrap here is safe because we are using cipherletters.
-            if let Some(set) = self.get(cipherletter.as_str()).unwrap() {
+            if let Some(set) = self.get(cipherletter).unwrap() {
                 // Previous candidates present for cipherletter so reducing needed.
-                if let Some(word_cipherletters_mapping_option) = word_mapping.get(cipherletter.as_str()) {
+                if let Some(word_cipherletters_mapping_option) = word_mapping.get(cipherletter) {
                     match word_cipherletters_mapping_option {
                         Some(word_cipherletter_mapping) => {
-                            let new_candidates_set: HashSet<String> = set.intersection(word_cipherletter_mapping).map(|x| x.clone()).collect();
-                            self.set(cipherletter.as_str(), Some(new_candidates_set));
+                            let new_candidates_set: HashSet<char> = set.intersection(word_cipherletter_mapping).map(|x| *x).collect();
+                            self.set(cipherletter, Some(new_candidates_set));
                         },
                         None => {}
                     };
                 }
             } else {
                 // No previous candidates present for cipherletter so just copy word mapping.
-                if let Some(word_cipherletters_mapping_option) = word_mapping.get(cipherletter.as_str()) {
+                if let Some(word_cipherletters_mapping_option) = word_mapping.get(cipherletter) {
                     match word_cipherletters_mapping_option {
                         Some(word_cipherletter_mapping) => {
-                            self.set(cipherletter.as_str(), Some(word_cipherletter_mapping.clone()));
+                            self.set(cipherletter, Some(word_cipherletter_mapping.clone()));
                         },
                         None => {}
                     };
@@ -598,7 +603,7 @@ impl Mapping {
     /// candidate should not be in any other cipherletter. Leaving it would produce
     /// an inconsistent deciphering key with repeated characters.
     pub fn clean_redundancies(&mut self){
-        let candidates_to_remove: Vec<String> = self.mapping.values()
+        let candidates_to_remove: Vec<char> = self.mapping.values()
             .filter(|&x|
                 if let Some(set) = x {
                     if set.len() == 1 {
@@ -610,12 +615,12 @@ impl Mapping {
                     false
                 })
             .map(|x| {
-                let set: &HashSet<String> = x.as_ref().unwrap();
+                let set: &HashSet<char> = x.as_ref().unwrap();
                 // Unwrap is not dangerous here because we filtered to be sure set has at least 1 element.
                 set.get_first_element().unwrap()
             })
             .collect();
-        let keys_to_check: Vec<String> = self.mapping.keys().cloned()
+        let keys_to_check: Vec<char> = self.mapping.keys().cloned()
             .filter(|x|
                 if let Some(Some(set)) = self.mapping.get(x) {
                     if set.len() > 1 {
@@ -643,9 +648,8 @@ impl Mapping {
     ///
     /// # Returns:
     /// * Current candidates set or None if cipherletter is not present.
-    fn get<T>(&self, key: T) -> Option<&Option<HashSet<String>>>
-        where T: AsRef<str> {
-        self.mapping.get(key.as_ref())
+    fn get(&self, key: char) -> Option<&Option<HashSet<char>>> {
+        self.mapping.get(&key)
     }
 
     /// Inserts a cipherletter-candidates pair into the mappping.
@@ -662,20 +666,23 @@ impl Mapping {
     ///
     /// # Returns:
     /// * Old value or None if key was not found.
-    fn set<T>(&mut self, key: T, value: Option<HashSet<String>>) -> Option<Option<HashSet<String>>>
-    where T: AsRef<str> {
-        self.mapping.insert(key.as_ref().to_string(), value)
+    fn set(&mut self, key: char, value: Option<HashSet<char>>) -> Option<Option<HashSet<char>>> {
+        self.mapping.insert(key, value)
     }
 
     /// Remove and return a cipherletter and its candidates from current mapping.
     ///
     /// # Returns:
     /// * A tuple with selected cipherletter and its candidates.
-    fn pop_item(&mut self) -> Result<(String, Option<HashSet<String>>)> {
+    fn pop_item(&mut self) -> Result<(char, Option<HashSet<char>>)> {
         if self.mapping.keys().len() >= 1 {
-            let cipherletter: String = self.mapping.keys().cloned().take(1).collect();
-            let set = self.mapping.remove(cipherletter.as_str()).unwrap();
-            Ok((cipherletter, set))
+            let cipherletters: Vec<char> = self.mapping.keys().cloned().take(1).collect();
+            if let Some(cipherletter) = cipherletters.get(0) {
+                let set = self.mapping.remove(&cipherletter).unwrap();
+                Ok((*cipherletter, set))
+            } else {
+                Err(ErrorKind::EmptyMapping.into())
+            }
         } else {
             Err(ErrorKind::EmptyMapping.into())
         }
@@ -689,17 +696,18 @@ impl Mapping {
     /// # Parameters:
     /// * key: Cipherletter to update.
     /// * value: Candidate to insert.
-    fn add<T, U>(&mut self, key: T, value: U)
-        where T: AsRef<str>,
-              U: AsRef<str> {
-        let entry = self.mapping.entry(key.as_ref().to_string()).or_insert(None);
+    // fn add<T, U>(&mut self, key: T, value: U)
+    //     where T: AsRef<str>,
+    //           U: AsRef<str> {
+    fn add(&mut self, key: char, value: char) {
+        let entry = self.mapping.entry(key).or_insert(None);
         match entry {
             Some(content) => {
-                content.insert(value.as_ref().to_string());
+                content.insert(value);
             },
             None => {
-                let mut new_content: HashSet<String> = HashSet::new();
-                new_content.insert(value.as_ref().to_string());
+                let mut new_content: HashSet<char> = HashSet::new();
+                new_content.insert(value);
                 *entry = Some(new_content);
             }
         };
@@ -722,12 +730,10 @@ impl Mapping {
     /// # Parameters:
     /// * key: Cipherletter to update.
     /// * value: Candidate to insert.
-    fn create_new_single_entry<T, U>(&mut self, key: T, value: U)
-        where T: AsRef<str>,
-              U: AsRef<str> {
-        let mut new_candidates_set = HashSet::new();
-        new_candidates_set.insert(value.as_ref().to_string());
-        self.mapping.insert(key.as_ref().to_string(), Some(new_candidates_set));
+    fn create_new_single_entry(&mut self, key: char, value: char) {
+        let mut new_candidates_set: HashSet<char> = HashSet::new();
+        new_candidates_set.insert(value);
+        self.mapping.insert(key, Some(new_candidates_set));
     }
 }
 
@@ -769,14 +775,14 @@ trait Extractor {
     fn get_first_element(&self) -> Option<Self::Item>;
 }
 
-impl Extractor for HashSet<String> {
+impl Extractor for HashSet<char> {
 
-    type Item = String;
+    type Item = char;
 
-    fn get_n_elements(&self, n: usize) -> Option<Vec<String>> {
-        let mut returned_elements: Vec<String> = Vec::new();
+    fn get_n_elements(&self, n: usize) -> Option<Vec<char>> {
+        let mut returned_elements: Vec<char> = Vec::new();
         for element in self.iter() {
-            returned_elements.push(element.clone());
+            returned_elements.push(*element);
             if returned_elements.len() >= n {
                 return Some(returned_elements);
             }
@@ -787,7 +793,7 @@ impl Extractor for HashSet<String> {
     fn get_first_element(&self) -> Option<Self::Item> {
         if let Some(elements_list) = self.get_n_elements(1) {
             if let Some(first_element) = elements_list.get(0) {
-                return Some(first_element.clone());
+                return Some(*first_element);
             } else {
                 return None;
             }
@@ -867,7 +873,7 @@ mod tests {
             {
                 let mut candidates_set = HashSet::new();
                 $(
-                    candidates_set.insert($value.to_string());
+                    candidates_set.insert(char::fromStr($value));
                  )+
                 Some(candidates_set)
             }
@@ -878,7 +884,7 @@ mod tests {
     fn test_hack_substitution() {
         let test_sets = vec![
             TestSet::new(ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS, "english", TEST_KEY, TEST_CHARSET),
-            // TestSet::new(SPANISH_TEXT_WITH_PUNCTUATIONS_MARKS, "spanish", TEST_KEY_SPANISH, TEST_CHARSET_SPANISH)
+            TestSet::new(SPANISH_TEXT_WITH_PUNCTUATIONS_MARKS, "spanish", TEST_KEY_SPANISH, TEST_CHARSET_SPANISH)
         ];
         let loaded_dictionaries = LoadedDictionaries::new();
         for set in test_sets {
@@ -992,10 +998,10 @@ mod tests {
 
     #[test]
     fn test_get_n_elements() {
-        let mut set: HashSet<String> = HashSet::new();
-        set.insert("a".to_string());
-        set.insert("b".to_string());
-        set.insert("c".to_string());
+        let mut set: HashSet<char> = HashSet::new();
+        set.insert(char::fromStr("a"));
+        set.insert(char::fromStr("b"));
+        set.insert(char::fromStr("c"));
         match set.get_n_elements(2) {
             Some(list) => {
                 assert_eq!(list.len(), 2);
@@ -1008,11 +1014,11 @@ mod tests {
 
     #[test]
     fn test_get_first_element() {
-        let mut set: HashSet<String> = HashSet::new();
-        set.insert("a".to_string());
+        let mut set: HashSet<char> = HashSet::new();
+        set.insert(char::fromStr("a"));
         match set.get_first_element() {
             Some(element) => {
-                assert_eq!(element, "a".to_string());
+                assert_eq!(element, char::fromStr("a"));
             },
             None => {
                 assert!(false, "No element was extracted.");
@@ -1086,7 +1092,7 @@ mod tests {
                                                "3": {"d"},
                                                "4": {"e", "f"},
                                                "5": {"g", "h"}});
-        mapping.set("1.5", None);
+        mapping.set(char::fromStr("0"), None);
         let mut expected_mapping_1 = mapping!(THIS_TEST_CHARSET, {"1": {"a"},
                               "2": {"c"},
                               "3": {"d"},
@@ -1175,9 +1181,9 @@ mod tests {
                                                "3": {"d"},
                                                "4": {"e", "f", "g"},
                                                "5": {"h"}});
-        let content = mapping.get("2").unwrap().as_ref().expect("Error retrieving key.");
+        let content = mapping.get(char::fromStr("2")).unwrap().as_ref().expect("Error retrieving key.");
         let content_string = content.get_first_element().expect("Error retrieving content.");
-        assert_eq!("c".to_string(), content_string);
+        assert_eq!(char::fromStr("c"), content_string);
     }
 
     #[test]
@@ -1188,10 +1194,10 @@ mod tests {
                                                "3": {"d"},
                                                "4": {"e", "f", "g"},
                                                "5": {"h"}});
-        mapping.set("4", candidates!("r", "t"));
-        let content = mapping.get("4").unwrap().as_ref().expect("Error retrieving key.");
+        mapping.set(char::fromStr("4"), candidates!("r", "t"));
+        let content = mapping.get(char::fromStr("4")).unwrap().as_ref().expect("Error retrieving key.");
         let content_list = content.get_n_elements(2).expect("Error retrieving content.");
-        assert!(vec!["r", "t"].iter().all(|candidate| content_list.contains(&candidate.to_string())));
+        assert!(vec!["r", "t"].iter().all(|candidate| content_list.contains(&char::fromStr(candidate))));
     }
 
     #[test]
@@ -1202,14 +1208,14 @@ mod tests {
                                                "3": {"d"},
                                                "4": {"e", "f", "g"},
                                                "5": {"h"}});
-        mapping.add("4", "x");
-        let content = mapping.get("4").unwrap().as_ref().expect("Error retrieving key.");
+        mapping.add(char::fromStr("4"), char::fromStr("x"));
+        let content = mapping.get(char::fromStr("4")).unwrap().as_ref().expect("Error retrieving key.");
         let expected_length: usize = 4;
         assert_eq!(expected_length, content.len(),
                    "Content has {} while we were expecting {}.",
                    content.len(), expected_length);
         let content_list = content.get_n_elements(expected_length).expect("Error retrieving content.");
-        assert!(vec!["e", "f", "g", "x"].iter().all(|candidate| content_list.contains(&candidate.to_string())));
+        assert!(vec!["e", "f", "g", "x"].iter().all(|candidate| content_list.contains(&char::fromStr(candidate))));
 
     }
 
@@ -1223,7 +1229,7 @@ mod tests {
                                                "5": {"h"}});
         // Test correct item extraction.
         let original_content = mapping.get_current_content().clone();
-        let original_keys: Vec<&String> = original_content.keys().collect();
+        let original_keys: Vec<&char> = original_content.keys().collect();
         let (extracted_cipherletter, extracted_candidates) = mapping.pop_item()
             .expect("Error extracting item.");
         assert!(original_keys.contains(&&extracted_cipherletter),
