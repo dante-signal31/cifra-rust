@@ -14,7 +14,8 @@ pub const DEFAULT_CHARSET: &'static str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijk
 pub enum Ciphers {
     CAESAR,
     TRANSPOSITION,
-    AFFINE
+    AFFINE,
+    VIGENERE
 }
 
 /// Generic function to offset text character frontwards and backwards.
@@ -89,7 +90,7 @@ fn get_offset_position(current_position: usize, key: usize, advance: bool, ciphe
     let i_key: isize = key.try_into()
         .chain_err(|| ErrorKind::ConversionError("key", "usize", "isize"))?;
     match cipher_used {
-        Ciphers::CAESAR=> if advance {Ok(i_current_position + i_key)} else {Ok(i_current_position - i_key)},
+        Ciphers::CAESAR | Ciphers::VIGENERE=> if advance {Ok(i_current_position + i_key)} else {Ok(i_current_position - i_key)},
         Ciphers::AFFINE=> {
             let (multiplying_key, adding_key) = get_key_parts(key, charset_length);
             let i_multiplying_key: isize = multiplying_key.try_into()
