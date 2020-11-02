@@ -97,7 +97,7 @@ fn vigenere_offset<T, U, V>(text: T, key: U, operation: Vigenere, charset: V) ->
         let subkey_offset = charset.as_ref().find(|x: char| x == subkey_char)
             .chain_err(|| ErrorKind::KeyError(key.as_ref().to_string(), "Error finding subkey index.".to_string()))?;
         let mut offset_char = String::new();
-        if (char.is_lowercase()) {
+        if char.is_lowercase() {
             offset_char = offset_text(char.to_string(), subkey_offset, advance, &Ciphers::VIGENERE, &charset)?;
         } else {
             offset_char = offset_text(char.to_lowercase().to_string(), subkey_offset, advance, &Ciphers::VIGENERE, &charset)?;

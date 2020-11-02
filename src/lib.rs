@@ -73,3 +73,14 @@ error_chain! {
             }
     }
 }
+
+/// Trait to use one-letter strings as chars.
+pub trait FromStr<T> {
+    fn fromStr(s: T) -> Self;
+}
+
+impl FromStr<&str> for char {
+    fn fromStr(s: &str) -> Self {
+        s.chars().next().expect(format!("Could not create char from given string: {}", s).as_str())
+    }
+}

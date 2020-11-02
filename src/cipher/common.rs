@@ -1,11 +1,15 @@
 use regex::Regex;
 use std::convert::TryInto;
 use std::ops::Add;
+use crate::FromStr;
 use crate::cipher::cryptomath::{modulus, find_mod_inverse};
 // use std::error::Error;
 // use std::fmt;
 // use std::fmt::Formatter;
 use crate::{ErrorKind, Result, ResultExt};
+use std::collections::HashMap;
+use std::iter::FromIterator;
+use std::hash::Hash;
 
 /// Common functions to be used across cipher modules.
 
@@ -153,17 +157,40 @@ pub fn normalize_text<T>(text: T) -> Vec<String>
     words_list
 }
 
+/// Python has a really useful class called Counter whereas Rust has not. This
+/// class is a simplified Rust equivalent for that class.
+struct Counter <T>
+    where T: Hash + std::cmp::Eq {
+    item_dict: HashMap<T, u64>
+}
 
+impl<T> FromIterator<T> for Counter<T>
+    where T: Hash + std::cmp::Eq {
+    fn from_iter<U: IntoIterator<Item=T>>(iter: U) -> Self {
+        let mut item_dict: HashMap<T, u64> = HashMap::new();
+        for key in iter {
+            *item_dict.entry(key).or_insert(0) += 1;
+        }
+        Counter{
+            item_dict
+        }
+    }
+}
 
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::FromStr;
+
+
 
     const ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS: &'static str = "This eBook is for the use of anyone anywhere at no cost and with
 almost no restrictions whatsoever.You may copy it, give it away or
 re-use it under the terms of the Project Gutenberg License included
 with this eBook or online at 2020";
+
+
 
     #[test]
     fn test_normalize_text() {
@@ -175,5 +202,14 @@ with this eBook or online at 2020";
                                  "included", "with", "this", "ebook", "or", "online", "at"];
         let returned_list = normalize_text(ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS);
         assert_eq!(returned_list, expected_list);
+    }
+
+    #[test]
+    fn test_counter_char() {
+        let text = "aaabbccd";
+        let counter: Counter<char> = Counter::from_iter(text.chars());
+        assert_eq!(counter.item_dict[&char::fromStr("a")], 3);
+        assert_eq!(counter.item_dict[&char::fromStr("c")], 2);
+        assert_eq!(counter.item_dict[&char::fromStr("d")], 1);
     }
 }

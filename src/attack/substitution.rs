@@ -10,6 +10,7 @@
 /// won/'t be detected.
 use crate::{ErrorKind, Result, ResultExt, Error};
 use crate::attack::dictionaries::{get_words_from_text, Dictionary, get_word_pattern};
+use crate::FromStr;
 use crate::cipher::substitution::decipher;
 use std::collections::{HashMap, HashSet};
 use std::convert::From;
@@ -75,15 +76,15 @@ macro_rules! mapping {
         };
     }
 
-trait FromStr<T> {
-    fn fromStr(s: T) -> Self;
-}
-
-impl FromStr<&str> for char {
-    fn fromStr(s: &str) -> Self {
-        s.chars().next().expect(format!("Could not create char from given string: {}", s).as_str())
-    }
-}
+// trait FromStr<T> {
+//     fn fromStr(s: T) -> Self;
+// }
+//
+// impl FromStr<&str> for char {
+//     fn fromStr(s: &str) -> Self {
+//         s.chars().next().expect(format!("Could not create char from given string: {}", s).as_str())
+//     }
+// }
 
 /// Get substitution ciphered text key.
 ///
