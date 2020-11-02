@@ -1,33 +1,32 @@
 use std::collections::HashMap;
+use crate::cipher::common::{normalize_text, Counter};
+use std::iter::FromIterator;
 
 
+/// Module for frequency attacks.
 
-// /// Module for frequency attacks.
-//
-// struct LetterHistogram {
-//     charset: &'static str,
-//     total_letters: u64,
-//     ordered_dict: HashMap<String, u64>,
-//     top_matching_letters: Vec<char>,
-//     bottom_matching_letters: Vec<char>
-// }
-//
+struct LetterHistogram {
+    charset: &'static str,
+    total_letters: u64,
+    ordered_dict: HashMap<String, u64>,
+    top_matching_letters: Vec<char>,
+    bottom_matching_letters: Vec<char>
+}
+
 // impl LetterHistogram {
 //
 //     fn new<T>(text: T, letters: Option<HashMap<char, u64>>,
 //               matching_width: usize, charset: &'static str) -> Self
 //     where T: AsRef<str> {
 //         let mut total_letters: u64 = 0;
-//         let mut letter_counter: u64 = 0;
+//         let mut letter_counter: Counter<char>;
 //         if let Some(_letters) = letters {
 //             total_letters = _letters.values().sum();
-//             // TODO: Create a Counter class. Rust has no one built-in.
-//             letter_counter = Counter::new(_letters);
+//             letter_counter = Counter::from_iter(_letters.iter());
 //         } else {
-//             // TODO: Implement normalize_text().
 //             let normalized_words = normalize_text(text);
-//             let letter_sequence =
-//
+//             let letter_sequence = String::from_iter(normalized_words);
+//             letter_counter = Counter::from_iter(letter_sequence.chars())
 //         }
 //         LetterHistogram{
 //             charset,

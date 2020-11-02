@@ -10,6 +10,7 @@ use crate::{ErrorKind, Result, ResultExt};
 use std::collections::HashMap;
 use std::iter::FromIterator;
 use std::hash::Hash;
+use std::collections::hash_map::RandomState;
 
 /// Common functions to be used across cipher modules.
 
@@ -159,9 +160,22 @@ pub fn normalize_text<T>(text: T) -> Vec<String>
 
 /// Python has a really useful class called Counter whereas Rust has not. This
 /// class is a simplified Rust equivalent for that class.
-struct Counter <T>
+pub struct Counter <T>
     where T: Hash + std::cmp::Eq {
     item_dict: HashMap<T, u64>
+}
+
+impl<T> From<HashMap<T, u64>> for Counter<T>
+    where T: Hash + std::cmp::Eq + Clone{
+    fn from(dict : HashMap<T, u64, RandomState>) -> Self {
+        let mut item_dict: HashMap<T, u64> = HashMap::new();
+        for key in dict.keys() {
+            *item_dict.entry(key.clone()).or_insert(0) = dict[key]
+        }
+        Counter{
+            item_dict
+        }
+    }
 }
 
 impl<T> FromIterator<T> for Counter<T>
@@ -182,8 +196,6 @@ impl<T> FromIterator<T> for Counter<T>
 mod tests {
     use super::*;
     use crate::FromStr;
-
-
 
     const ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS: &'static str = "This eBook is for the use of anyone anywhere at no cost and with
 almost no restrictions whatsoever.You may copy it, give it away or
@@ -208,6 +220,18 @@ with this eBook or online at 2020";
     fn test_counter_char() {
         let text = "aaabbccd";
         let counter: Counter<char> = Counter::from_iter(text.chars());
+        assert_eq!(counter.item_dict[&char::fromStr("a")], 3);
+        assert_eq!(counter.item_dict[&char::fromStr("c")], 2);
+        assert_eq!(counter.item_dict[&char::fromStr("d")], 1);
+    }
+
+    #[test]
+    fn test_counter_char_from_hashmap() {
+        let mut dict: HashMap<char, u64> = HashMap::new();
+        dict.insert(char::fromStr("a"), 3);
+        dict.insert(char::fromStr("c"), 2);
+        dict.insert(char::fromStr("d"), 1);
+        let counter: Counter<char> = Counter::from(dict);
         assert_eq!(counter.item_dict[&char::fromStr("a")], 3);
         assert_eq!(counter.item_dict[&char::fromStr("c")], 2);
         assert_eq!(counter.item_dict[&char::fromStr("d")], 1);
