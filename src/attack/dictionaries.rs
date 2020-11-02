@@ -11,6 +11,7 @@ use diesel::RunQueryDsl;
 use diesel::prelude::*;
 
 use crate::attack::database::{Database, DatabaseSession, NewLanguage, NewWord};
+use crate::cipher::common::normalize_text;
 use crate::{Result, ErrorKind, ResultExt};
 // use crate::schema::*;
 use crate::schema::languages;
@@ -20,6 +21,7 @@ use crate::schema::words::dsl::*;
 // use diesel::result::Error::DatabaseError;
 use regex::Regex;
 use std::io::Read;
+use std::iter::FromIterator;
 
 
 /// Cifra stores word dictionaries in a local database. This class
@@ -379,13 +381,8 @@ pub fn get_words_from_text_file<T>(file_pathname: T) -> Result<HashSet<String>>
 /// A set of words normalized to lowercase and without any punctuation mark.
 pub fn get_words_from_text<T>(text: T)-> HashSet<String>
     where T: AsRef<str> {
-    let lowercase_text = text.as_ref().to_lowercase();
-    let re = Regex::new(r"[^\W\d_]+")
-        .expect("Invalid regex to search for normalized words.");
-    let mut words_set: HashSet<String> = HashSet::new();
-    for _word in re.find_iter(&lowercase_text) {
-        words_set.insert(_word.as_str().to_string());
-    }
+    let words_list = normalize_text(text);
+    let words_set = HashSet::from_iter(words_list.iter().cloned());
     words_set
 }
 

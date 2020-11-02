@@ -5,3 +5,4 @@ pub mod dictionaries;
 pub mod simple_attacks;
 pub mod substitution;
 pub mod transposition;
+mod frequency;

@@ -1,3 +1,4 @@
+use regex::Regex;
 use std::convert::TryInto;
 use std::ops::Add;
 use crate::cipher::cryptomath::{modulus, find_mod_inverse};
@@ -128,4 +129,51 @@ pub fn get_key_parts(key: usize, charset_length: usize)-> (usize, usize){
     // to use modulus function.
     let adding_key = key % charset_length;
     (multiplying_key, adding_key)
+}
+
+/// Get a list of lowercase words from text without any punctuation marks.
+///
+/// # Parameters:
+/// * text: Text to extract words from.
+///
+/// # Returns:
+/// * A list with all text words in text with lowercased and without any punctuation mark.
+pub fn normalize_text<T>(text: T) -> Vec<String>
+    where T: AsRef<str> {
+    let mut lowercase_text = text.as_ref().to_lowercase();
+    // Line breaks are troublesome for further assesment so we remove it.
+    lowercase_text = lowercase_text.replace("\n", " ");
+    lowercase_text = lowercase_text.replace("\r", " ");
+    let re = Regex::new(r"[^\W\d_]+")
+        .expect("Invalid regex to search for normalized words.");
+    let mut words_list: Vec<String> = Vec::new();
+    for _word in re.find_iter(&lowercase_text) {
+        words_list.push(_word.as_str().to_string());
+    }
+    words_list
+}
+
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS: &'static str = "This eBook is for the use of anyone anywhere at no cost and with
+almost no restrictions whatsoever.You may copy it, give it away or
+re-use it under the terms of the Project Gutenberg License included
+with this eBook or online at 2020";
+
+    #[test]
+    fn test_normalize_text() {
+        let expected_list = vec!["this", "ebook", "is", "for", "the", "use", "of", "anyone",
+                                 "anywhere", "at", "no", "cost", "and", "with", "almost", "no",
+                                 "restrictions", "whatsoever", "you", "may", "copy", "it",
+                                 "give", "it", "away", "or", "re", "use", "it", "under", "the",
+                                 "terms", "of", "the", "project", "gutenberg", "license",
+                                 "included", "with", "this", "ebook", "or", "online", "at"];
+        let returned_list = normalize_text(ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS);
+        assert_eq!(returned_list, expected_list);
+    }
 }
