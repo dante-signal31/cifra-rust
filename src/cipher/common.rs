@@ -10,7 +10,7 @@ use crate::{ErrorKind, Result, ResultExt};
 use std::collections::HashMap;
 use std::iter::FromIterator;
 use std::hash::Hash;
-use std::collections::hash_map::RandomState;
+use std::collections::hash_map::{RandomState, Values};
 
 /// Common functions to be used across cipher modules.
 
@@ -161,13 +161,32 @@ pub fn normalize_text<T>(text: T) -> Vec<String>
 /// Python has a really useful class called Counter whereas Rust has not. This
 /// class is a simplified Rust equivalent for that class.
 pub struct Counter <T>
-    where T: Hash + std::cmp::Eq {
+    where T: Hash + std::cmp::Eq + Clone {
     item_dict: HashMap<T, u64>
 }
 
-impl<T> From<HashMap<T, u64>> for Counter<T>
+impl<T> Counter<T>
+    where T: Hash + std::cmp::Eq + Clone {
+
+    /// Get amount for every item counted.
+    pub fn values(&self) -> Values<'_, T, u64>{
+        self.item_dict.values()
+    }
+
+    /// List the n most common elements and their counts from the most
+    /// common to the least.
+    pub fn most_common(&self) -> Vec<(&T, &u64)> {
+        let mut items: Vec<(&T, &u64)> = self.item_dict.iter().collect();
+        // Reverse sorting from biggest to smallest.
+        items.sort_by(|&item_A, &item_B| item_B.1.cmp(item_A.1));
+        items
+    }
+
+}
+
+impl<T> From<&HashMap<T, u64>> for Counter<T>
     where T: Hash + std::cmp::Eq + Clone{
-    fn from(dict : HashMap<T, u64, RandomState>) -> Self {
+    fn from(dict : &HashMap<T, u64, RandomState>) -> Self {
         let mut item_dict: HashMap<T, u64> = HashMap::new();
         for key in dict.keys() {
             *item_dict.entry(key.clone()).or_insert(0) = dict[key]
@@ -179,7 +198,7 @@ impl<T> From<HashMap<T, u64>> for Counter<T>
 }
 
 impl<T> FromIterator<T> for Counter<T>
-    where T: Hash + std::cmp::Eq {
+    where T: Hash + std::cmp::Eq + Clone {
     fn from_iter<U: IntoIterator<Item=T>>(iter: U) -> Self {
         let mut item_dict: HashMap<T, u64> = HashMap::new();
         for key in iter {
@@ -231,9 +250,20 @@ with this eBook or online at 2020";
         dict.insert(char::fromStr("a"), 3);
         dict.insert(char::fromStr("c"), 2);
         dict.insert(char::fromStr("d"), 1);
-        let counter: Counter<char> = Counter::from(dict);
+        let counter: Counter<char> = Counter::from(&dict);
         assert_eq!(counter.item_dict[&char::fromStr("a")], 3);
         assert_eq!(counter.item_dict[&char::fromStr("c")], 2);
         assert_eq!(counter.item_dict[&char::fromStr("d")], 1);
+    }
+
+    #[test]
+    fn test_counter_most_common() {
+        let text = "aaabbccd";
+        let counter: Counter<char> = Counter::from_iter(text.chars());
+        let most_common_list = counter.most_common();
+        assert_eq!(most_common_list[0], (&char::fromStr("a"), &3));
+        assert_eq!(most_common_list[1], (&char::fromStr("b"), &2));
+        assert_eq!(most_common_list[2], (&char::fromStr("c"), &2));
+        assert_eq!(most_common_list[3], (&char::fromStr("d"), &1));
     }
 }
