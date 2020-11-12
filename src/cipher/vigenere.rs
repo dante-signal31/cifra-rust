@@ -5,7 +5,7 @@ use crate::{ErrorKind, Result, ResultExt};
 
 // To keep along with book examples I'm going to work with an only lowercase
 // charset.
-const DEFAULT_CHARSET: &'static str = "abcdefghijklmnopqrstuvwxyz";
+pub const DEFAULT_CHARSET: &'static str = "abcdefghijklmnopqrstuvwxyz";
 
 enum Vigenere {
     CIPHER,
