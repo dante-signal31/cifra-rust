@@ -1,3 +1,4 @@
+use linked_hash_map::LinkedHashMap;
 use std::collections::{HashMap, HashSet};
 use crate::cipher::common::{normalize_text, Counter};
 use crate::cipher::vigenere::DEFAULT_CHARSET;
@@ -12,7 +13,7 @@ use std::path::Prefix::Verbatim;
 struct LetterHistogram {
     charset: &'static str,
     total_letters: u64,
-    ordered_dict: HashMap<char, u64>,
+    ordered_dict: LinkedHashMap<char, u64>,
     top_matching_letters: Vec<char>,
     bottom_matching_letters: Vec<char>
 }
@@ -99,18 +100,24 @@ impl LetterHistogram {
     /// # Returns:
     /// * This histogram with an ordered dict with ocurrences.
     fn create_ordered_dict(mut self, letter_counter: Counter<char>) -> Self {
-        let mut ordered_dict_by_values: HashMap<char, u64> = HashMap::from_iter(letter_counter.most_common().iter().cloned());
+        let most_common_letters = letter_counter.most_common();
+        // Standard HshMaps don't keep insertion order so I must use LinkedHashMap.
+        let mut ordered_dict_by_values: LinkedHashMap<char, u64> = LinkedHashMap::from_iter(
+            most_common_letters.iter()
+                .map(|(key, value)| (**key, **value))
+                .collect::<Vec<(char, u64)>>()
+        );
         let charset_letters_not_in_text: Vec<char> = self.charset
             .chars()
             .filter(|ch|
-                ordered_dict_by_values.contains_key(&char::fromStr(ch.to_lowercase().as_str()))
+                !ordered_dict_by_values.contains_key(&char::fromStr(ch.to_lowercase().to_string().as_str()))
                     && ch.is_alphabetic())
-            .map(|ch| char::fromStr(ch.to_lowercase().as_str())).collect();
+            .map(|ch| char::fromStr(ch.to_lowercase().to_string().as_str())).collect();
         for letter in charset_letters_not_in_text {
             ordered_dict_by_values.insert(letter, 0);
         }
         let values_set: HashSet<&u64> = HashSet::from_iter(ordered_dict_by_values.values());
-        let mut values_ordered: Vec<&u64> = Vec::from(values_set);
+        let mut values_ordered: Vec<&u64> = values_set.into_iter().collect();
         values_ordered.sort_by(|&item_A, &item_B| item_B.cmp(item_A));
         let mut key_bins: Vec<Vec<&char>> = Vec::new();
         for value in values_ordered {
@@ -120,11 +127,17 @@ impl LetterHistogram {
                 .collect();
             key_bins.push(bin);
         }
-        key_bins.iter().for_each(|mut v| v.sort());
+        // Book orders bins using reverse order of every char in english histogram as key.
+        // Problem is that I don't want to link text histogram to any specific language
+        // histogram because I want to develop a language agnostic algorithm.
+        // So I just order bins using default alphabetical order key.
+        key_bins.iter_mut().for_each(|v| v.sort());
         let keys_ordered: Vec<&char> = key_bins.iter()
-            .flat_map(|v| v.iter())
+            .flat_map(|v| v.iter().map(|&ch| ch))
             .collect();
-        keys_ordered.iter().for_each(|key| self.ordered_dict[key] = ordered_dict_by_values[key]);
+        keys_ordered.iter().for_each(|&&key| {
+            let _ = self.ordered_dict.insert(key,ordered_dict_by_values[&key]);
+        });
         self
     }
 
@@ -138,12 +151,24 @@ impl LetterHistogram {
     ///
     /// # Returns:
     /// * This histogram with top and bottom matching lists ready for comparisons.
-    fn set_matching_width(self, width: usize) -> Self{
-        unimplemented!()
+    fn set_matching_width(mut self, width: usize) -> Self{
+        self.top_matching_letters = self.ordered_dict.iter()
+            .map(|(key, value)| key)
+            .take(width)
+            .cloned()
+            .collect();
+        let mut ordered_dict_iter = self.ordered_dict.iter();
+        ordered_dict_iter.advance_by(self.ordered_dict.len()-width);
+        self.bottom_matching_letters = ordered_dict_iter
+            .map(|(key, value)| key)
+            .take(width)
+            .cloned()
+            .collect();
+        self
     }
 
     /// Return letters whose occurrences we have.
-    fn letters(&self) -> Keys<'_, char, u64> {
+    fn letters(&self) -> linked_hash_map::Keys<char, u64> {
         self.ordered_dict.keys()
     }
 }
@@ -163,7 +188,7 @@ mod tests {
     #[test]
     fn test_get_letter_ocurrences() {
         let text = "Aaaa bb, c, da-a. efg\r\nggg";
-        let mut expected_ocurrences: HashMap<char, u64> = HashMap::new();
+        let mut expected_ocurrences: LinkedHashMap<char, u64> = LinkedHashMap::new();
         expected_ocurrences.insert(char::fromStr("a"), 6);
         expected_ocurrences.insert(char::fromStr("g"), 4);
         expected_ocurrences.insert(char::fromStr("b"), 2);

@@ -1,4 +1,5 @@
 #![feature(trace_macros)]
+#![feature(iter_advance_by)]
 #[macro_use]
 extern crate diesel;
 extern crate dotenv;
