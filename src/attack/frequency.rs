@@ -171,6 +171,32 @@ impl LetterHistogram {
     fn letters(&self) -> linked_hash_map::Keys<char, u64> {
         self.ordered_dict.keys()
     }
+
+    /// Compare two LetterHistogram instances.
+    ///
+    /// Score is calculated counting how many letters are in matching extremes of
+    /// both instances. A coincidence is counted only if is present in top matching
+    /// in both instances or in bottom matching in both instances.
+    ///
+    /// If matching extremes are of X length, then maximum score is of 2 * X.
+    ///
+    /// # Parameters:
+    /// * one: First instance to compare.
+    /// * other: Second instance to compare.
+    ///
+    /// # Returns:
+    /// * Integer score. The higher the more coincidence between two instances.
+    fn match_score(one: LetterHistogram, other: LetterHistogram) -> u8 {
+        let top_match: u8 = one.top_matching_letters.iter()
+            .filter(|letter| other.top_matching_letters.contains(*letter))
+            .map(|_| 1)
+            .sum();
+        let bottom_match: u8 = one.bottom_matching_letters.iter()
+            .filter(|letter| other.bottom_matching_letters.contains(*letter))
+            .map(|_| 1)
+            .sum();
+        top_match + bottom_match
+    }
 }
 
 #[cfg(test)]
@@ -178,12 +204,22 @@ mod tests {
     use super::*;
     use crate::FromStr;
 
-    // use rstest::*;
-    //
-    // #[fixture]
-    // fn language_histogram() -> LetterHistogram {
-    //
-    // }
+    use rstest::*;
+    use std::fs::File;
+    use std::io::Read;
+
+    #[fixture]
+    fn language_histogram() -> LetterHistogram {
+        let mut population_text = String::new();
+        let mut file_to_read = File::open("resources/english_book.txt")
+            .expect("Error opening english book.");
+        file_to_read.read_to_string(&mut population_text)
+            .expect("Error reading english book content.");
+        let language_histogram = LetterHistogram::from_text(population_text,
+                                                            6,
+                                                            DEFAULT_CHARSET);
+        language_histogram
+    }
 
     #[test]
     fn test_get_letter_ocurrences() {
@@ -222,5 +258,21 @@ mod tests {
                                                     DEFAULT_CHARSET);
         assert_eq!(frequencies.top_matching_letters, expected_top);
         assert_eq!(frequencies.bottom_matching_letters, expected_bottom);
+    }
+
+    #[rstest]
+    fn test_match_score(language_histogram: LetterHistogram) {
+        let  text = "Sy l nlx sr pyyacao l ylwj eiswi upar lulsxrj isr sxrjsxwjr, ia esmm
+            rwctjsxsza sj wmpramh, lxo txmarr jia aqsoaxwa sr pqaceiamnsxu, ia
+            esmm caytra jp famsaqa sj. Sy, px jia pjiac ilxo, ia sr pyyacao
+            rpnajisxu eiswi lyypcor l calrpx ypc lwjsxu sx lwwpcolxwa jp isr
+            sxrjsxwjr, ia esmm lwwabj sj aqax px jia rmsuijarj aqsoaxwa. Jia
+            pcsusx py nhjir sr agbmlsxao sx jisr elh. -Facjclxo Ctrramm";
+        let expected_match_score = 5;
+        let text_histogram = LetterHistogram::from_text(text,
+                                                        6,
+                                                        DEFAULT_CHARSET);
+        let match_score = LetterHistogram::match_score(language_histogram, text_histogram);
+        assert_eq!(match_score, expected_match_score);
     }
 }
