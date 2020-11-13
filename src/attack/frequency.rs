@@ -207,4 +207,20 @@ mod tests {
             assert_eq!(returned_letters[i], expected_letters[i])
         }
     }
+
+    #[test]
+    fn test_set_matching_width() {
+        let text = "Aaaa bb, c, da-a. efg\r\nggg";
+        let expected_top = vec![char::fromStr("a"),
+                                char::fromStr("g"),
+                                char::fromStr("b")];
+        let expected_bottom = vec![char::fromStr("x"),
+                                   char::fromStr("y"),
+                                   char::fromStr("z")];
+        let frequencies = LetterHistogram::from_text(text,
+                                                    3,
+                                                    DEFAULT_CHARSET);
+        assert_eq!(frequencies.top_matching_letters, expected_top);
+        assert_eq!(frequencies.bottom_matching_letters, expected_bottom);
+    }
 }
