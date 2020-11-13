@@ -199,6 +199,47 @@ impl LetterHistogram {
     }
 }
 
+///  Take a text a return repeated patterns with its separations.
+///
+///  # Parameters:
+///  * text: Text to analyze.
+///  * length: Length of patterns to search for.
+///
+///  # Returns:
+///  * A dict whose keys are found patterns and its values are a list of integers
+///      with separations between found patterns.
+fn find_repeated_sequences<T>(text: T, length: usize) -> HashMap<String, Vec<usize>>
+    where T: AsRef<str> {
+    let sequences = find_adjacent_separations(text, length);
+    find_not_adjacent_separations(&sequences);
+    sequences
+}
+
+///  Find repeated sequences of given length and separations between adjacent
+///  repeated sequences.
+///
+///  # Parameters:
+///  * text: Text to analyze.
+///  * length: Length of patterns to search for.
+///
+///  # Returns:
+///  * A dict whose keys are found patterns and its values are a list of
+///      integers with separations between adjacent found patters.
+fn find_adjacent_separations(text: T, length: usize) -> HashMap<String, Vec<usize>> {
+    unimplemented!()
+}
+
+/// Complete a dict of repeated sequences calculating separation between
+/// not adjacent repetitions.
+///
+/// # Parameters:
+/// * sequences: A dict whose keys are found patterns and its values are a list of
+///      integers with separations between adjacent found patters. This dict will be
+///      updated in place with calculated sequences.
+fn find_not_adjacent_separations(sequences: &HashMap<String, Vec<usize>>) {
+    unimplemented!()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -274,5 +315,18 @@ mod tests {
                                                         DEFAULT_CHARSET);
         let match_score = LetterHistogram::match_score(language_histogram, text_histogram);
         assert_eq!(match_score, expected_match_score);
+    }
+
+    #[test]
+    fn test_find_repeated_sequences() {
+        let ciphered_text = "PPQCA XQVEKG YBNKMAZU YBNGBAL JON I TSZM JYIM. VRAG VOHT VRAU C TKSG. DDWUO XITLAZU VAVV RAZ C VKB QP IWPOU";
+        let mut expected_patterns: HashMap<String, Vec<usize>> = HashMap::new();
+        expected_patterns.insert("ybn".to_string(), vec![8]);
+        expected_patterns.insert("azu".to_string(), vec![48]);
+        expected_patterns.insert("vre".to_string(), vec![8, 24, 32]);
+        let found_patterns = find_repeated_sequences(ciphered_text, 3);
+        let found_set: HashSet<(&String, &Vec<usize>)> = HashSet::from_iter(found_patterns.iter());
+        let expected_set: HashSet<(&String, &Vec<usize>)> = HashSet::from_iter(expected_patterns.iter());
+        assert_eq!(found_patterns, expected_patterns);
     }
 }
