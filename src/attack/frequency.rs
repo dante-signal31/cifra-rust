@@ -4,7 +4,7 @@ use crate::cipher::common::{normalize_text, Counter};
 use crate::cipher::vigenere::DEFAULT_CHARSET;
 use std::iter::FromIterator;
 use std::collections::hash_map::Keys;
-use crate::FromStr;
+use crate::{FromStr, FindFromIndex};
 use std::path::Prefix::Verbatim;
 
 
@@ -210,8 +210,8 @@ impl LetterHistogram {
 ///      with separations between found patterns.
 fn find_repeated_sequences<T>(text: T, length: usize) -> HashMap<String, Vec<usize>>
     where T: AsRef<str> {
-    let sequences = find_adjacent_separations(text, length);
-    find_not_adjacent_separations(&sequences);
+    let mut sequences = find_adjacent_separations(text, length);
+    find_not_adjacent_separations(&mut sequences);
     sequences
 }
 
@@ -227,22 +227,40 @@ fn find_repeated_sequences<T>(text: T, length: usize) -> HashMap<String, Vec<usi
 ///      integers with separations between adjacent found patters.
 fn find_adjacent_separations<T>(text: T, length: usize) -> HashMap<String, Vec<usize>>
     where T: AsRef<str> {
-    // let normalized_words = normalize_text(&text);
-    // let char_string = String::from_iter(normalized_words);
-    // let char_string_length = text.as_ref().len();
-    // let mut sequences: HashMap<String, Vec<usize>> = HashMap::new();
-    // for (i, char) in char_string.chars().enumerate() {
-    //     let sequence_to_find = &char_string[i..i + length];
-    //     if !sequences.contains_key(sequence_to_find) {
-    //         let mut index = i + length;
-    //         let previous_index = i;
-    //         while index < char_string_length {
-    //             index = char_string.f
-    //         }
-    //     }
-    // }
-    // sequences
-    unimplemented!()
+    let normalized_words = normalize_text(&text);
+    let char_string = String::from_iter(normalized_words);
+    // Calling len() only gets me bytes length, but what I need is char length.
+    let char_string_length = char_string.chars()
+        .map(|_| 1)
+        .sum();
+    let mut sequences: HashMap<String, Vec<usize>> = HashMap::new();
+    for (i, char) in char_string.chars().enumerate() {
+        if i + length > char_string_length {break;}
+        let sequence_to_find = &char_string[i..i + length];
+        if !sequences.contains_key(sequence_to_find) {
+            let mut index = i + length;
+            let mut previous_index = i;
+            while index < char_string_length {
+                if let Some(new_index) = String::findFromIndex(&char_string,
+                                                           sequence_to_find,
+                                                           index) {
+                    index = new_index;
+                    let separation = index - previous_index;
+                    if sequences.contains_key(sequence_to_find) {
+                       let mut values = sequences.get_mut(sequence_to_find).unwrap();
+                        values.push(separation);
+                    } else {
+                        sequences.insert(sequence_to_find.to_string(), vec![separation]);
+                    }
+                    previous_index = index;
+                    index += length;
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+    sequences
 }
 
 /// Complete a dict of repeated sequences calculating separation between
@@ -252,8 +270,21 @@ fn find_adjacent_separations<T>(text: T, length: usize) -> HashMap<String, Vec<u
 /// * sequences: A dict whose keys are found patterns and its values are a list of
 ///      integers with separations between adjacent found patters. This dict will be
 ///      updated in place with calculated sequences.
-fn find_not_adjacent_separations(sequences: &HashMap<String, Vec<usize>>) {
-    unimplemented!()
+fn find_not_adjacent_separations(sequences: &mut HashMap<String, Vec<usize>>) {
+    for (_, separations) in sequences.iter_mut() {
+        let mut not_adjacent_spaces: Vec<usize> = Vec::new();
+        let sequence_length = separations.len();
+        if sequence_length > 1 {
+            for (i, &space) in separations.iter().enumerate() {
+                for n in (i+1..sequence_length).rev().step_by(1){
+                    let spaces_to_add: Vec<usize> = (separations[i+1..n]).to_vec();
+                    let spaces_to_add_sum: usize = spaces_to_add.iter().sum();
+                    not_adjacent_spaces.push(space + spaces_to_add_sum);
+                }
+            }
+            separations.append(&mut not_adjacent_spaces)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -339,7 +370,7 @@ mod tests {
         let mut expected_patterns: HashMap<String, Vec<usize>> = HashMap::new();
         expected_patterns.insert("ybn".to_string(), vec![8]);
         expected_patterns.insert("azu".to_string(), vec![48]);
-        expected_patterns.insert("vre".to_string(), vec![8, 24, 32]);
+        expected_patterns.insert("vra".to_string(), vec![8, 24, 32]);
         let found_patterns = find_repeated_sequences(ciphered_text, 3);
         let found_set: HashSet<(&String, &Vec<usize>)> = HashSet::from_iter(found_patterns.iter());
         let expected_set: HashSet<(&String, &Vec<usize>)> = HashSet::from_iter(expected_patterns.iter());
