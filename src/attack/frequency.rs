@@ -225,7 +225,23 @@ fn find_repeated_sequences<T>(text: T, length: usize) -> HashMap<String, Vec<usi
 ///  # Returns:
 ///  * A dict whose keys are found patterns and its values are a list of
 ///      integers with separations between adjacent found patters.
-fn find_adjacent_separations(text: T, length: usize) -> HashMap<String, Vec<usize>> {
+fn find_adjacent_separations<T>(text: T, length: usize) -> HashMap<String, Vec<usize>>
+    where T: AsRef<str> {
+    // let normalized_words = normalize_text(&text);
+    // let char_string = String::from_iter(normalized_words);
+    // let char_string_length = text.as_ref().len();
+    // let mut sequences: HashMap<String, Vec<usize>> = HashMap::new();
+    // for (i, char) in char_string.chars().enumerate() {
+    //     let sequence_to_find = &char_string[i..i + length];
+    //     if !sequences.contains_key(sequence_to_find) {
+    //         let mut index = i + length;
+    //         let previous_index = i;
+    //         while index < char_string_length {
+    //             index = char_string.f
+    //         }
+    //     }
+    // }
+    // sequences
     unimplemented!()
 }
 

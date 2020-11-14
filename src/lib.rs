@@ -77,6 +77,7 @@ error_chain! {
 
 /// Trait to use one-letter strings as chars.
 pub trait FromStr<T> {
+    /// Create a char from a one letter string.
     fn fromStr(s: T) -> Self;
 }
 
@@ -84,4 +85,52 @@ impl FromStr<&str> for char {
     fn fromStr(s: &str) -> Self {
         s.chars().next().expect(format!("Could not create char from given string: {}", s).as_str())
     }
+}
+
+/// Trait to use to find substrings searching from a given index.
+pub trait FindFromIndex<T, U> {
+
+    /// Find text_to_find in text using index as start search position.
+    ///
+    /// # Parameters:
+    /// * text: Text to search into.
+    /// * text_to_find: text to look for.
+    /// * index: Start search position.
+    ///
+    /// # Returns:
+    /// * Index where text_to_find_was found, counted from text start.
+    fn findFromIndex(text: &T, text_to_find: U, index: usize) -> Option<usize>;
+}
+
+impl <U: AsRef<str>> FindFromIndex<String, U> for String {
+    fn findFromIndex(text: &String, text_to_find: U, index: usize) -> Option<usize> {
+        let mut text_iter = text.chars();
+        if let Ok(()) = text_iter.advance_by(index) {
+            let remaining_text: String = text_iter.collect();
+            match remaining_text.find(text_to_find.as_ref()) {
+                Some(current_index) => return Some(current_index + index),
+                None => None
+            }
+        } else {
+            None
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_find_from_index() {
+        let text = "This is a text where I want to find another text.".to_string();
+        let text_to_find = "text";
+        let expected_index: usize = 44;
+        if let Some(found_index) = String::findFromIndex(&text, text_to_find, 14) {
+            assert_eq!(found_index, expected_index);
+        } else {
+            assert!(false)
+        }
+    }
+
 }
