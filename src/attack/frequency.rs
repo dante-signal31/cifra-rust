@@ -276,7 +276,7 @@ fn find_not_adjacent_separations(sequences: &mut HashMap<String, Vec<usize>>) {
         let sequence_length = separations.len();
         if sequence_length > 1 {
             for (i, &space) in separations.iter().enumerate() {
-                for n in (i+1..sequence_length).rev().step_by(1){
+                for n in (i+2..sequence_length+1).rev().step_by(1){
                     let spaces_to_add: Vec<usize> = (separations[i+1..n]).to_vec();
                     let spaces_to_add_sum: usize = spaces_to_add.iter().sum();
                     not_adjacent_spaces.push(space + spaces_to_add_sum);
