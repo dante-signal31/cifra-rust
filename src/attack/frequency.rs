@@ -186,7 +186,7 @@ impl LetterHistogram {
     ///
     /// # Returns:
     /// * Integer score. The higher the more coincidence between two instances.
-    fn match_score(one: LetterHistogram, other: LetterHistogram) -> u8 {
+    fn match_score(one: &LetterHistogram, other: &LetterHistogram) -> u8 {
         let top_match: u8 = one.top_matching_letters.iter()
             .filter(|letter| other.top_matching_letters.contains(*letter))
             .map(|_| 1)
@@ -333,7 +333,9 @@ fn get_substrings<T>(ciphertext: T, step: usize) -> Vec<String>
 /// * Score value.
 fn match_substring<T>(substring: T, reference_histogram: &LetterHistogram) -> u8
     where T: AsRef<str> {
-    unimplemented!()
+    let substring_histogram = LetterHistogram::from_text(&substring, 6, DEFAULT_CHARSET);
+    let match_result = LetterHistogram::match_score(&substring_histogram, reference_histogram);
+    match_result
 }
 
 
@@ -425,7 +427,7 @@ mod tests {
         let text_histogram = LetterHistogram::from_text(text,
                                                         6,
                                                         DEFAULT_CHARSET);
-        let match_score = LetterHistogram::match_score(language_histogram, text_histogram);
+        let match_score = LetterHistogram::match_score(&language_histogram, &text_histogram);
         assert_eq!(match_score, expected_match_score);
     }
 
