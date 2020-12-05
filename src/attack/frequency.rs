@@ -372,8 +372,31 @@ mod tests {
         expected_patterns.insert("azu".to_string(), vec![48]);
         expected_patterns.insert("vra".to_string(), vec![8, 24, 32]);
         let found_patterns = find_repeated_sequences(ciphered_text, 3);
-        let found_set: HashSet<(&String, &Vec<usize>)> = HashSet::from_iter(found_patterns.iter());
-        let expected_set: HashSet<(&String, &Vec<usize>)> = HashSet::from_iter(expected_patterns.iter());
-        assert_eq!(found_patterns, expected_patterns);
+        let found_set: HashMap<&String, HashSet<usize>> = HashMap::from_iter(found_patterns.iter()
+            .map(|(pattern, separations)| (pattern, HashSet::from_iter(separations.iter().cloned()))));
+        let expected_set: HashMap<&String, HashSet<usize>> = HashMap::from_iter(expected_patterns.iter()
+            .map(|(pattern, separations)| (pattern, HashSet::from_iter(separations.iter().cloned()))));
+        for (pattern, separations) in found_set {
+            assert!(expected_set.contains_key(pattern));
+            assert_eq!(*expected_set.get(pattern).unwrap(), separations);
+        }
+    }
+
+    #[test]
+    fn test_find_repeated_sequences_many_repetitions() {
+        let ciphered_text = "PPQCAXQVEKGYBNKMAZUYBNGBALJONITSZMJYIM. VRA GVOHT VRA UCTKSG.DDWUOXITLAZUVAV VRA ZCVKBQPIWPOUX VRA WZ VRA";
+        let mut expected_patterns: HashMap<String, Vec<usize>> = HashMap::new();
+        expected_patterns.insert("ybn".to_string(), vec![8]);
+        expected_patterns.insert("azu".to_string(), vec![48]);
+        expected_patterns.insert("vra".to_string(), vec![8, 24, 16, 5, 32, 48, 53, 40, 45, 21]);
+        let found_patterns = find_repeated_sequences(ciphered_text, 3);
+        let found_set: HashMap<&String, HashSet<usize>> = HashMap::from_iter(found_patterns.iter()
+            .map(|(pattern, separations)| (pattern, HashSet::from_iter(separations.iter().cloned()))));
+        let expected_set: HashMap<&String, HashSet<usize>> = HashMap::from_iter(expected_patterns.iter()
+            .map(|(pattern, separations)| (pattern, HashSet::from_iter(separations.iter().cloned()))));
+        for (pattern, separations) in found_set {
+            assert!(expected_set.contains_key(pattern));
+            assert_eq!(*expected_set.get(pattern).unwrap(), separations);
+        }
     }
 }
