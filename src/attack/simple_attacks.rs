@@ -4,6 +4,7 @@ use rayon::prelude::*;
 
 use crate::{ErrorKind, Result, ResultExt};
 use crate::attack::dictionaries::{IdentifiedLanguage, identify_language, get_best_result};
+use diesel::sql_types::Integer;
 
 
 #[derive(Clone)]
@@ -80,6 +81,37 @@ impl Parameters {
     pub fn insert_str<T>(&mut self, key: &'static str, value: T)
         where T: AsRef<str> {
         self.parameters.insert(key, ParameterValue::Str(value.as_ref().to_string()));
+    }
+}
+
+/// Iterator through a range from 1 to maximum_key.
+struct IntegerKeyGenerator {
+    start: usize,
+    current: usize,
+    end: usize
+}
+
+impl IntegerKeyGenerator {
+    fn new(start: usize, end: usize) -> Self {
+        IntegerKeyGenerator{
+            start,
+            current: start,
+            end
+        }
+    }
+}
+
+impl Iterator for IntegerKeyGenerator {
+    type Item = usize;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current < self.end {
+            let returned_value = self.current;
+            self.current += 1;
+            Some(returned_value)
+        } else {
+            None
+        }
     }
 }
 
@@ -162,4 +194,17 @@ pub fn assess_key(decipher_function: GetString, decipher_function_args: &Paramet
     let identified_language = identify_language(deciphered_text)?;
     let used_key = decipher_function_args.get_int("key")?;
     Ok((used_key, identified_language))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_integer_key_generator() {
+        let expected_result: Vec<usize> = vec![0, 1, 2, 3, 4];
+        let generator = IntegerKeyGenerator::new(0, 5);
+        let returned_result: Vec<usize> = generator.collect();
+        assert_eq!(returned_result, expected_result);
+    }
 }
