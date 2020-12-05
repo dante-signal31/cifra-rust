@@ -168,6 +168,24 @@ impl LetterHistogram {
         self
     }
 
+    /// Return frequency for given letter.
+    ///
+    /// Frequency is the possibility of occurrence of given letter inside a normal text.
+    /// Its value goes from 0 to 1.
+    ///
+    /// # Parameters:
+    /// * key: Letter to look its frequency for.
+    ///
+    /// # Returns:
+    /// * Probability of occurrence of given letter.
+    fn frequency<T>(&self, key: T) -> Result<f64>
+        where T: AsRef<str>{
+        let ocurrences = self.ordered_dict.get(&char::fromStr(key.as_ref()))
+            .chain_err(|| ErrorKind::KeyError(key.as_ref().to_string(), "Error finding letter frequency.".to_string()))?;
+        let frequency: f64 = *ocurrences as f64/self.total_letters as f64;
+        Ok(frequency)
+    }
+
     /// Return letters whose occurrences we have.
     fn letters(&self) -> linked_hash_map::Keys<char, u64> {
         self.ordered_dict.keys()
@@ -209,7 +227,7 @@ impl LetterHistogram {
 ///  # Returns:
 ///  * A dict whose keys are found patterns and its values are a list of integers
 ///      with separations between found patterns.
-fn find_repeated_sequences<T>(text: T, length: usize) -> HashMap<String, Vec<usize>>
+pub fn find_repeated_sequences<T>(text: T, length: usize) -> HashMap<String, Vec<usize>>
     where T: AsRef<str> {
     let mut sequences = find_adjacent_separations(text, length);
     find_not_adjacent_separations(&mut sequences);
@@ -306,7 +324,7 @@ fn find_not_adjacent_separations(sequences: &mut HashMap<String, Vec<usize>>) {
 ///
 /// # Returns:
 /// * A list with substrings. This lists will have the same length as step parameter.
-fn get_substrings<T>(ciphertext: T, step: usize) -> Vec<String>
+pub fn get_substrings<T>(ciphertext: T, step: usize) -> Vec<String>
     where T: AsRef<str> {
     let normalized_text = normalize_text(&ciphertext);
     let ciphered_stream: String = normalized_text.join("");
@@ -378,6 +396,7 @@ mod tests {
     use rstest::*;
     use std::fs::File;
     use std::io::Read;
+    use float_cmp::{ApproxEq, F64Margin};
 
     #[fixture]
     fn language_histogram() -> LetterHistogram {
@@ -407,6 +426,30 @@ mod tests {
                                                    DEFAULT_CHARSET);
         for (letter, ocurrences) in expected_ocurrences.iter() {
             assert_eq!(histogram.ordered_dict.get(letter).unwrap(), ocurrences);
+        }
+        let expected_letters: Vec<&char> = expected_ocurrences.keys().collect();
+        let returned_letters: Vec<&char> = histogram.letters().collect();
+        for i in 0..3 {
+            assert_eq!(returned_letters[i], expected_letters[i])
+        }
+    }
+
+    #[test]
+    fn test_get_letter_frequencies() {
+        let text = "Aaaa bb, c, da-a. efg\r\nggg";
+        let mut expected_ocurrences: LinkedHashMap<char, f64> = LinkedHashMap::new();
+        expected_ocurrences.insert(char::fromStr("a"), 6_f64/16_f64);
+        expected_ocurrences.insert(char::fromStr("g"), 4_f64/16_f64);
+        expected_ocurrences.insert(char::fromStr("b"), 2_f64/16_f64);
+        expected_ocurrences.insert(char::fromStr("c"), 1_f64/16_f64);
+        expected_ocurrences.insert(char::fromStr("d"), 1_f64/16_f64);
+        expected_ocurrences.insert(char::fromStr("e"), 1_f64/16_f64);
+        expected_ocurrences.insert(char::fromStr("f"), 1_f64/16_f64);
+        let histogram = LetterHistogram::from_text(text, 6,
+                                                   DEFAULT_CHARSET);
+        for (letter, frequency) in expected_ocurrences.iter() {
+            let returned_frequency = histogram.frequency(letter.to_string()).unwrap();
+            assert!(returned_frequency.approx_eq(*frequency, (0.0,2)));
         }
         let expected_letters: Vec<&char> = expected_ocurrences.keys().collect();
         let returned_letters: Vec<&char> = histogram.letters().collect();
