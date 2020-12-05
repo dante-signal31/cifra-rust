@@ -544,7 +544,7 @@ pub mod tests {
 almost no restrictions whatsoever You may copy it give it away or
 re use it under the terms of the Project Gutenberg License included
 with this eBook or online at";
-    const ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS: &'static str = "This eBook is for the use of anyone anywhere at no cost and with
+    pub const ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS: &'static str = "This eBook is for the use of anyone anywhere at no cost and with
 almost no restrictions whatsoever.You may copy it, give it away or
 re-use it under the terms of the Project Gutenberg License included
 with this eBook or online at 2020";

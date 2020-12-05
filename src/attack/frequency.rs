@@ -287,10 +287,66 @@ fn find_not_adjacent_separations(sequences: &mut HashMap<String, Vec<usize>>) {
     }
 }
 
+
+/// Get substrings for a given step.
+///
+/// ```
+/// let ciphertext = "abc dabc dabcd abcd";
+/// let substrings = get_substrings(ciphertext, 4);
+/// assert_eq!(substrings[0] == "aaaa");
+/// assert_eq!(substrings[1] == "bbbb");
+/// assert_eq!(substrings[2] == "cccc");
+/// assert_eq!(substrings[3] == "dddd");
+/// ```
+///
+/// # Parameters:
+/// * ciphertext: Text to extract substrings from.
+/// * step: How many letters lap before extracting next substring letter.
+///
+/// # Returns:
+/// * A list with substrings. This lists will have the same length as step parameter.
+fn get_substrings<T>(ciphertext: T, step: usize) -> Vec<String>
+    where T: AsRef<str> {
+    unimplemented!()
+}
+
+
+/// Compare a substring against a known letter histogram.
+///
+/// The higher the returned value the more likely this substring is from the same
+/// language as reference histogram.
+///
+/// # Parameters:
+/// * substring: String to compare.
+/// * reference_histogram: Histogram to compare against.
+///
+/// # Returns:
+/// * Score value.
+fn match_substring<T>(substring: T, reference_histogram: &LetterHistogram) -> u8
+    where T: AsRef<str> {
+    unimplemented!()
+}
+
+
+/// Get the most likely letters used to get given ciphered substring in the context of
+/// given language histogram.
+///
+/// # Parameters:
+/// * substring: Ciphered substring.
+/// * reference_histogram: Histogram to compare against.
+///
+/// # Returns:
+/// * A list of letters as most likely candidates to be the key for given ciphered substring.
+fn find_most_likely_subkeys<T>(substring: T, reference_histogram: &LetterHistogram) -> Vec<String>
+    where T: AsRef<str> {
+    unimplemented!()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::FromStr;
+    use crate::attack::dictionaries::tests::ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS;
 
     use rstest::*;
     use std::fs::File;
@@ -398,5 +454,31 @@ mod tests {
             assert!(expected_set.contains_key(pattern));
             assert_eq!(*expected_set.get(pattern).unwrap(), separations);
         }
+    }
+
+    #[test]
+    fn test_get_substrings() {
+        let ciphertext = "abc dabc dabcd abcd";
+        let substrings = get_substrings(&ciphertext, 4);
+        assert_eq!(substrings[0], "aaaa");
+        assert_eq!(substrings[1], "bbbb");
+        assert_eq!(substrings[2], "cccc");
+        assert_eq!(substrings[3], "dddd");
+    }
+
+    #[rstest]
+    fn test_match_substring(language_histogram: LetterHistogram) {
+        let substring = "PAEBABANZIAHAKDXAAAKIU";
+        let expected_result = 4;
+        let match_result = match_substring(&substring, &language_histogram);
+        assert_eq!(match_result, expected_result);
+    }
+
+    #[rstest]
+    fn test_most_likely_subkey(language_histogram: LetterHistogram) {
+        let ciphered_substring = "PAEBABANZIAHAKDXAAAKIU";
+        let expected_result = vec!["p", "t", "w", "x"];
+        let result = find_most_likely_subkeys(&ciphered_substring, &language_histogram);
+        assert_eq!(result, expected_result)
     }
 }
