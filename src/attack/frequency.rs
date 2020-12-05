@@ -1,7 +1,7 @@
 use linked_hash_map::LinkedHashMap;
 use std::collections::{HashMap, HashSet};
 use crate::cipher::common::{normalize_text, Counter};
-use crate::cipher::vigenere::DEFAULT_CHARSET;
+use crate::cipher::vigenere::{DEFAULT_CHARSET, cipher};
 use std::iter::FromIterator;
 use std::collections::hash_map::Keys;
 use crate::{FromStr, FindFromIndex};
@@ -307,7 +307,16 @@ fn find_not_adjacent_separations(sequences: &mut HashMap<String, Vec<usize>>) {
 /// * A list with substrings. This lists will have the same length as step parameter.
 fn get_substrings<T>(ciphertext: T, step: usize) -> Vec<String>
     where T: AsRef<str> {
-    unimplemented!()
+    let normalized_text = normalize_text(&ciphertext);
+    let ciphered_stream: String = normalized_text.join("");
+    let mut substrings: Vec<String> = Vec::new();
+    for i in 0..step {
+        let mut ciphered_stream_iter = ciphered_stream.chars();
+        ciphered_stream_iter.advance_by(i);
+        let substring: String = ciphered_stream_iter.step_by(step).collect();
+        substrings.push(substring);
+    }
+    substrings
 }
 
 
