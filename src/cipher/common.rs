@@ -10,7 +10,7 @@ use crate::{ErrorKind, Result, ResultExt};
 use std::collections::HashMap;
 use std::iter::FromIterator;
 use std::hash::Hash;
-use std::collections::hash_map::{RandomState, Values};
+use std::collections::hash_map::{RandomState, Values, Iter};
 
 /// Common functions to be used across cipher modules.
 
@@ -171,6 +171,11 @@ impl<T> Counter<T>
     /// Get amount for every item counted.
     pub fn values(&self) -> Values<'_, T, u64>{
         self.item_dict.values()
+    }
+
+    /// Get kay-values pairs.
+    pub fn items(&self) -> Iter<'_, T, u64> {
+        self.item_dict.iter()
     }
 
     /// List the n most common elements and their counts from the most

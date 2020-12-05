@@ -1,7 +1,8 @@
 use linked_hash_map::LinkedHashMap;
 use std::collections::{HashMap, HashSet};
+use crate::{ErrorKind, Result, ResultExt};
 use crate::cipher::common::{normalize_text, Counter};
-use crate::cipher::vigenere::{DEFAULT_CHARSET, cipher};
+use crate::cipher::vigenere::{DEFAULT_CHARSET, cipher, decipher};
 use std::iter::FromIterator;
 use std::collections::hash_map::Keys;
 use crate::{FromStr, FindFromIndex};
@@ -348,9 +349,24 @@ fn match_substring<T>(substring: T, reference_histogram: &LetterHistogram) -> u8
 ///
 /// # Returns:
 /// * A list of letters as most likely candidates to be the key for given ciphered substring.
-fn find_most_likely_subkeys<T>(substring: T, reference_histogram: &LetterHistogram) -> Vec<String>
+fn find_most_likely_subkeys<T>(substring: T, reference_histogram: &LetterHistogram) -> Result<Vec<String>>
     where T: AsRef<str> {
-    unimplemented!()
+    let mut scores: HashMap<String, u64> = HashMap::new();
+    for letter in reference_histogram.charset.chars() {
+        let deciphered_text = decipher(&substring, &letter.to_string(), &reference_histogram.charset)?;
+        let deciphered_histogram = LetterHistogram::from_text(&deciphered_text, 6, &reference_histogram.charset);
+        let score = LetterHistogram::match_score(&deciphered_histogram, &reference_histogram);
+        scores.insert(letter.to_string(), u64::from(score));
+    }
+    let scores_counter = Counter::from(&scores);
+    let (_, maximum_count) = scores_counter.most_common()[0];
+    let mut most_likely_subkeys: Vec<String> = scores_counter.items()
+        .filter(|(_, value)| **value == *maximum_count)
+        .map(|(key, value)| key)
+        .cloned()
+        .collect();
+    most_likely_subkeys.sort();
+    Ok(most_likely_subkeys)
 }
 
 #[cfg(test)]
@@ -489,7 +505,7 @@ mod tests {
     fn test_most_likely_subkey(language_histogram: LetterHistogram) {
         let ciphered_substring = "PAEBABANZIAHAKDXAAAKIU";
         let expected_result = vec!["p", "t", "w", "x"];
-        let result = find_most_likely_subkeys(&ciphered_substring, &language_histogram);
+        let result = find_most_likely_subkeys(&ciphered_substring, &language_histogram).unwrap();
         assert_eq!(result, expected_result)
     }
 }
