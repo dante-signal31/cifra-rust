@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use rayon::prelude::*;
 
 use crate::{ErrorKind, Result, ResultExt};
-use crate::attack::dictionaries::{IdentifiedLanguage, identify_language, get_best_result};
+use crate::attack::dictionaries::{IdentifiedLanguage, identify_language, get_best_result, Dictionary};
 use diesel::sql_types::Integer;
 
 
@@ -85,15 +85,15 @@ impl Parameters {
 }
 
 /// Iterator through a range from 1 to maximum_key.
-struct IntegerKeyGenerator {
+struct IntegerKeyIterator {
     start: usize,
     current: usize,
     end: usize
 }
 
-impl IntegerKeyGenerator {
+impl IntegerKeyIterator {
     fn new(start: usize, end: usize) -> Self {
-        IntegerKeyGenerator{
+        IntegerKeyIterator {
             start,
             current: start,
             end
@@ -101,7 +101,7 @@ impl IntegerKeyGenerator {
     }
 }
 
-impl Iterator for IntegerKeyGenerator {
+impl Iterator for IntegerKeyIterator {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -114,6 +114,27 @@ impl Iterator for IntegerKeyGenerator {
         }
     }
 }
+
+/// Iterate through every word in our dictionaries.
+struct DictionaryWordKeyIterator {
+    available_languages: Vec<String>,
+    current_language_index: usize,
+    words: Vec<String>,
+    current_word_index: usize
+}
+
+impl DictionaryWordKeyIterator {
+    fn new() -> Result<Self> {
+        // let available_languages = Dictionary::get_dictionaries_names()?;
+        // let current_language = &available_languages[0];
+        // let dictionary = Dictionary::new(current_language, false)?;
+        // let words  = dictionary.
+        unimplemented!()
+    }
+
+}
+
+
 
 
 type GetIdentifiedLanguageTuple = fn(&Parameters) -> Result<(usize, IdentifiedLanguage)>;
@@ -203,7 +224,7 @@ mod tests {
     #[test]
     fn test_integer_key_generator() {
         let expected_result: Vec<usize> = vec![0, 1, 2, 3, 4];
-        let generator = IntegerKeyGenerator::new(0, 5);
+        let generator = IntegerKeyIterator::new(0, 5);
         let returned_result: Vec<usize> = generator.collect();
         assert_eq!(returned_result, expected_result);
     }

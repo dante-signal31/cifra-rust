@@ -243,6 +243,18 @@ impl Dictionary {
         let presence: f64 = current_hits as f64 / total_words as f64;
         presence
     }
+
+    /// Get a list of every word present at dictionary.
+    pub fn get_all_words(&self) -> Result<Vec<String>> {
+        let words_result = words::table
+            .filter(language_id.eq(self.language_id))
+            .select(word)
+            .get_results::<String>(self.session());
+        match words_result {
+            Ok(_words) => Ok(_words),
+            Err(e) => bail!(format!("{}",e))
+        }
+    }
 }
 
 /// Get word pattern.
@@ -532,6 +544,7 @@ pub mod tests {
     use test_common::fs::ops::{copy_files};
     use test_common::fs::tmp::TestEnvironment;
     use test_common::system::env::TemporalEnvironmentVariable;
+    use rstest::*;
     use std::ffi::OsString;
     use std::path::{Path, PathBuf};
     use std::io::{Write, BufReader, Read};
@@ -664,7 +677,7 @@ nahm.";
     }
 
     /// Get a HashMap with languages as keys and a list of words for every language.
-    fn get_micro_dictionaries() -> HashMap<&'static str, Vec<String>>{
+    fn get_micro_dictionaries_content() -> HashMap<&'static str, Vec<String>>{
         let mut micro_dictionaries: HashMap<&'static str, Vec<String>> = HashMap::new();
         micro_dictionaries.insert("english", vec!("yes".to_string(), "no".to_string(), "dog".to_string(), "cat".to_string()));
         micro_dictionaries.insert("spanish", vec!("si".to_string(), "no".to_string(), "perro".to_string(), "gato".to_string()));
@@ -673,14 +686,16 @@ nahm.";
         micro_dictionaries
     }
 
+
     /// Create a dictionary at a temp dir filled with only a handful of words.
     ///
     /// # Returns:
     /// Yields created temp_dir to host temporal dictionary database.
+    #[fixture]
     fn loaded_dictionary_temp_dir()-> (TestEnvironment, TemporalEnvironmentVariable) {
         let (temp_env, temp_env_database_path) = temporary_database_folder(None);
         database::create_database();
-        let micro_dictionaries= get_micro_dictionaries();
+        let micro_dictionaries= get_micro_dictionaries_content();
         // let temp_env = TestEnvironment::new();
         for (_language, _words) in &micro_dictionaries {
             let mut language_dictionary = Dictionary::new(_language, true)
@@ -812,7 +827,7 @@ nahm.";
     #[test]
     /// Test delete a language also removes its words.
     fn test_delete_language() {
-        let mut micro_dictionaries = get_micro_dictionaries();
+        let mut micro_dictionaries = get_micro_dictionaries_content();
         let (temp_dir, temp_env_database_path) = loaded_dictionary_temp_dir();
         let language_to_remove = "german";
         Dictionary::remove_dictionary(language_to_remove);
@@ -895,7 +910,7 @@ nahm.";
         let (temp_dir, temp_env_database_path) = temporary_database_folder(None);
         database::create_database();
         let _language = "english";
-        let micro_dictionaries = get_micro_dictionaries();
+        let micro_dictionaries = get_micro_dictionaries_content();
         let mut words_to_add: HashSet<String> = HashSet::new();
         micro_dictionaries[_language].iter().map(|_word| words_to_add.insert(_word.clone())).collect::<Vec<_>>();
         let mut dictionary = Dictionary::new(_language, true)
@@ -965,5 +980,17 @@ nahm.";
         assert_eq!(recovered_list, expected_list,
             "Recovered list {:?} but we were expecting {:?}",
             recovered_list, expected_list);
+    }
+
+    #[rstest]
+    fn test_get_all_words(loaded_dictionary_temp_dir: (TestEnvironment, TemporalEnvironmentVariable)) {
+        let expected_words: HashSet<String> = HashSet::from_iter(vec!["yes".to_string(),
+                                                     "no".to_string(),
+                                                     "dog".to_string(),
+                                                     "cat".to_string()]);
+        let dictionary = Dictionary::new("english", false).unwrap();
+        let returned_words = dictionary.get_all_words().unwrap();
+        let returned_words_set = HashSet:: from_iter(returned_words);
+        assert_eq!(returned_words_set, expected_words)
     }
 }
