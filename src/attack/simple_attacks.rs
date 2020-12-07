@@ -118,20 +118,62 @@ impl Iterator for IntegerKeyIterator {
 /// Iterate through every word in our dictionaries.
 struct DictionaryWordKeyIterator {
     available_languages: Vec<String>,
+    languages_length: usize,
     current_language_index: usize,
     words: Vec<String>,
+    words_length: usize,
     current_word_index: usize
 }
 
 impl DictionaryWordKeyIterator {
-    fn new() -> Result<Self> {
-        // let available_languages = Dictionary::get_dictionaries_names()?;
-        // let current_language = &available_languages[0];
-        // let dictionary = Dictionary::new(current_language, false)?;
-        // let words  = dictionary.
-        unimplemented!()
+    pub fn new() -> Result<Self> {
+        let available_languages = Dictionary::get_dictionaries_names()?;
+        let languages_length = available_languages.len();
+        let current_language = &available_languages[0];
+        let dictionary = Dictionary::new(current_language, false)?;
+        let words  = dictionary.get_all_words()?;
+        let words_length = words.len();
+        Ok(DictionaryWordKeyIterator {
+            available_languages,
+            languages_length,
+            current_language_index: 0,
+            words,
+            words_length,
+            current_word_index:0
+        })
     }
 
+    fn get_next_word(&mut self) -> Option<String> {
+        let word = self.words[self.current_word_index].clone();
+        self.current_word_index += 1;
+        return Some(word);
+    }
+}
+
+impl Iterator for DictionaryWordKeyIterator {
+    type Item = String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current_word_index < self.words_length {
+            self.get_next_word()
+        } else if self.current_language_index < self.languages_length {
+            let current_language = &self.available_languages[self.current_language_index];
+            self.current_language_index += 1;
+            if let Ok(dictionary) = Dictionary::new(current_language, false) {
+                self.words  = match dictionary.get_all_words(){
+                    Ok(_words) => _words,
+                    Err(E) => return None
+                };
+                self.words_length = self.words.len();
+                self.current_word_index = 0;
+                self.get_next_word()
+            } else {
+                return None
+            }
+        } else {
+            None
+        }
+    }
 }
 
 
@@ -220,6 +262,12 @@ pub fn assess_key(decipher_function: GetString, decipher_function_args: &Paramet
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::*;
+    use crate::attack::dictionaries::tests::{loaded_dictionary_temp_dir, MicroDictionaries};
+    use test_common::fs::tmp::TestEnvironment;
+    use test_common::system::env::TemporalEnvironmentVariable;
+    use std::collections::HashSet;
+    use std::iter::FromIterator;
 
     #[test]
     fn test_integer_key_generator() {
@@ -227,5 +275,19 @@ mod tests {
         let generator = IntegerKeyIterator::new(0, 5);
         let returned_result: Vec<usize> = generator.collect();
         assert_eq!(returned_result, expected_result);
+    }
+
+    #[rstest]
+    fn test_dictionary_word_key_generator(loaded_dictionary_temp_dir: (TestEnvironment, TemporalEnvironmentVariable)) {
+        let micro_dictionaries = MicroDictionaries::new();
+        let expected_words: Vec<String> = micro_dictionaries._languages
+            .keys()
+            .flat_map(|key| micro_dictionaries._languages[key].iter())
+            .cloned()
+            .collect();
+        let expected_words_set: HashSet<String> = HashSet::from_iter(expected_words);
+        let word_iterator = DictionaryWordKeyIterator::new().unwrap();
+        let recovered_words_set: HashSet<String> = HashSet::from_iter(word_iterator);
+        assert_eq!(recovered_words_set, expected_words_set);
     }
 }

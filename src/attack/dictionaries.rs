@@ -624,6 +624,34 @@ nahm.";
 
     const LANGUAGES: [&'static str; 4] = ["english", "spanish", "french", "german"];
 
+    pub struct MicroDictionaries {
+        pub(crate) _languages: HashMap<String, Vec<String>>
+    }
+
+    impl MicroDictionaries {
+        pub fn new() -> Self {
+            let mut _languages: HashMap<String, Vec<String>> = HashMap::new();
+            _languages.insert("english".to_string(), vec!["yes".to_string(),
+                                                         "no".to_string(),
+                                                         "dog".to_string(),
+                                                         "cat".to_string(),
+                                                         "snake".to_string()]);
+            _languages.insert("spanish".to_string(), vec!["si".to_string(),
+                                                         "no".to_string(),
+                                                         "perro".to_string(),
+                                                         "gato".to_string()]);
+            _languages.insert("french".to_string(), vec!["qui".to_string(),
+                                                         "non".to_string(),
+                                                         "chien".to_string(),
+                                                         "chat".to_string()]);
+            _languages.insert("german".to_string(), vec!["ja".to_string(),
+                                                         "nein".to_string(),
+                                                         "hund".to_string(),
+                                                         "katze".to_string()]);
+            MicroDictionaries{_languages}
+        }
+    }
+
     /// Class with info to use a temporary dictionaries database.
     pub struct LoadedDictionaries {
         pub temp_dir: PathBuf,
@@ -679,7 +707,7 @@ nahm.";
     /// Get a HashMap with languages as keys and a list of words for every language.
     fn get_micro_dictionaries_content() -> HashMap<&'static str, Vec<String>>{
         let mut micro_dictionaries: HashMap<&'static str, Vec<String>> = HashMap::new();
-        micro_dictionaries.insert("english", vec!("yes".to_string(), "no".to_string(), "dog".to_string(), "cat".to_string()));
+        micro_dictionaries.insert("english", vec!("yes".to_string(), "no".to_string(), "dog".to_string(), "cat".to_string(), "snake".to_string()));
         micro_dictionaries.insert("spanish", vec!("si".to_string(), "no".to_string(), "perro".to_string(), "gato".to_string()));
         micro_dictionaries.insert("french", vec!("qui".to_string(), "non".to_string(), "chien".to_string(), "chat".to_string()));
         micro_dictionaries.insert("german", vec!("ja".to_string(), "nein".to_string(), "hund".to_string(), "katze".to_string()));
@@ -692,7 +720,7 @@ nahm.";
     /// # Returns:
     /// Yields created temp_dir to host temporal dictionary database.
     #[fixture]
-    fn loaded_dictionary_temp_dir()-> (TestEnvironment, TemporalEnvironmentVariable) {
+    pub fn loaded_dictionary_temp_dir()-> (TestEnvironment, TemporalEnvironmentVariable) {
         let (temp_env, temp_env_database_path) = temporary_database_folder(None);
         database::create_database();
         let micro_dictionaries= get_micro_dictionaries_content();
@@ -987,7 +1015,7 @@ nahm.";
         let expected_words: HashSet<String> = HashSet::from_iter(vec!["yes".to_string(),
                                                      "no".to_string(),
                                                      "dog".to_string(),
-                                                     "cat".to_string()]);
+                                                     "cat".to_string(), "snake".to_string()]);
         let dictionary = Dictionary::new("english", false).unwrap();
         let returned_words = dictionary.get_all_words().unwrap();
         let returned_words_set = HashSet:: from_iter(returned_words);
