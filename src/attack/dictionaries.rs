@@ -19,7 +19,7 @@ use crate::schema::languages::dsl::*;
 use crate::schema::words;
 use crate::schema::words::dsl::*;
 // use diesel::result::Error::DatabaseError;
-use regex::Regex;
+// use regex::Regex;
 use std::io::Read;
 use std::iter::FromIterator;
 

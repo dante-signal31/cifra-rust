@@ -13,10 +13,10 @@ use crate::attack::dictionaries::{get_words_from_text, Dictionary, get_word_patt
 use crate::FromStr;
 use crate::cipher::substitution::decipher;
 use std::collections::{HashMap, HashSet};
-use std::convert::From;
+// use std::convert::From;
 use std::fmt::Debug;
 // use std::fmt;
-use std::iter::FromIterator;
+// use std::iter::FromIterator;
 use rayon::prelude::*;
 
 /// Creates a mapping instance using a content description similar to python dicts.

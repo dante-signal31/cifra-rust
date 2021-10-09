@@ -1,7 +1,7 @@
 use regex::Regex;
 use std::convert::TryInto;
 use std::ops::Add;
-use crate::FromStr;
+// use crate::FromStr;
 use crate::cipher::cryptomath::{modulus, find_mod_inverse};
 // use std::error::Error;
 // use std::fmt;

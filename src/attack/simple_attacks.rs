@@ -4,7 +4,7 @@ use rayon::prelude::*;
 
 use crate::{ErrorKind, Result, ResultExt};
 use crate::attack::dictionaries::{IdentifiedLanguage, identify_language, get_best_result, Dictionary};
-use diesel::sql_types::Integer;
+// use diesel::sql_types::Integer;
 
 
 #[derive(Clone)]

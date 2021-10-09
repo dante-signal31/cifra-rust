@@ -4,9 +4,9 @@ use crate::{ErrorKind, Result, ResultExt};
 use crate::cipher::common::{normalize_text, Counter};
 use crate::cipher::vigenere::{DEFAULT_CHARSET, cipher, decipher};
 use std::iter::FromIterator;
-use std::collections::hash_map::Keys;
+// use std::collections::hash_map::Keys;
 use crate::{FromStr, FindFromIndex};
-use std::path::Prefix::Verbatim;
+// use std::path::Prefix::Verbatim;
 
 
 /// Module for frequency attacks.
