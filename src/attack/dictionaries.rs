@@ -545,6 +545,7 @@ pub mod tests {
     use test_common::fs::tmp::TestEnvironment;
     use test_common::system::env::TemporalEnvironmentVariable;
     use rstest::*;
+    use serial_test::serial;
     use std::ffi::OsString;
     use std::path::{Path, PathBuf};
     use std::io::{Write, BufReader, Read};

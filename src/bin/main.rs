@@ -7,6 +7,7 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use cifra_rust::cipher::common::DEFAULT_CHARSET;
+use cifra_rust::attack::dictionaries::Dictionary;
 
 /// Get an string containing current app version.
 ///
@@ -354,8 +355,91 @@ pub fn parse_arguments(arg_vec: &Vec<&str>) -> Configuration {
     configuration
 }
 
+/// Helper generic function to process files to cipher and decipher.
+///
+/// # Parameters:
+/// * configuration: Cifra running configurations.
+///
+/// # Returns:
+/// * Processed resulting string.
+fn process_file_with_key(configuration: &Configuration)-> String {
+    unimplemented!()
+}
+
+/// Helper generic function to output resulting content.
+///
+/// # Parameters:
+/// * result: String with resulting processed content. If an output file has been requested then
+/// result is written to that file or to screen otherwise.
+/// * configuration: Cifra running configurations.
+fn output_result<T>(result: T, configuration: &Configuration)
+where T: AsRef<str>{
+    unimplemented!()
+}
+
+/// Apply crypto attack to file to get most likely plain text.
+///
+/// # Parameters:
+/// * input_filepath: Path to file to attack.
+/// * configuration: Cifra running configuration.
+///
+/// # Returns:
+/// * Most likely original plain text.
+fn attack_file(input_filepath: T, configuration: &Configuration)-> String {
+    unimplemented!()
+}
+
+fn _main(argv: Vec<&str>) {
+    let configuration = parse_arguments(&argv);
+
+    match configuration.running_mode {
+        // Dictionary management.
+        Modes::Dictionary(DictionaryActions::Create
+                            {dictionary_name, initial_words_file})=> {
+            let mut new_dictionary = Dictionary::new(dictionary_name, true)
+                .expect("Error creating new dictionary.");
+            if let Some(path) = initial_words_file{
+                let pathname = path.to_str()
+                    .expect("Error processing initial words file name.");
+                new_dictionary.populate(pathname);
+            }
+        }
+        Modes::Dictionary(DictionaryActions::Delete
+                            { dictionary_name })=> {
+            Dictionary::remove_dictionary(dictionary_name)
+                .expect("Error removing dictionary.");
+        }
+        Modes::Dictionary(DictionaryActions::Update
+                          { dictionary_name, words_file })=> {
+            let mut dictionary = Dictionary::new(dictionary_name, false)
+                .expect("Error opening dictionary.");
+            let pathname = words_file.to_str()
+                .expect("Error processing words file name.");
+            dictionary.populate(pathname);
+        }
+        Modes::Dictionary(DictionaryActions::List)=> {
+            let dictionaries = Dictionary::get_dictionaries_names()
+                .expect("Error retrieving available dictionaries.");
+            for dictionary in &dictionaries{
+                println!(dictionary);
+            }
+        }
+        // Ciphering management.
+        Modes::Cipher | Modes::Decipher => {
+            let ciphered_content = process_file_with_key(&configuration);
+            output_result(&ciphered_content, &configuration);
+        }
+        Modes::Attack=> {
+            let recovered_content = attack_file(&configuration_mode);
+            output_result(&recovered_content, &configuration)
+        }
+    }
+}
+
 fn main() {
-    todo!()
+    // I make an indirection to run functional test feeding my own vector to _main().
+    // Shame on Rust for not having default arguments!
+    _main(sys.args);
 }
 
 #[cfg(test)]

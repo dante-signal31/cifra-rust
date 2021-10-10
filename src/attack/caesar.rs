@@ -132,6 +132,7 @@ fn get_best_result(identified_languages: &Vec<(usize, IdentifiedLanguage)>)-> us
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use std::time::Instant;
     use crate::attack::dictionaries::tests::LoadedDictionaries;
     use crate::cipher::caesar::decipher;

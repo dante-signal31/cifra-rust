@@ -263,11 +263,11 @@ with this eBook or online at 2020";
 
     #[test]
     fn test_counter_most_common() {
-        let text = "aaabbccd";
+        let text = "aaaabbbccd";
         let counter: Counter<char> = Counter::from_iter(text.chars());
         let most_common_list = counter.most_common();
-        assert_eq!(most_common_list[0], (&char::fromStr("a"), &3));
-        assert_eq!(most_common_list[1], (&char::fromStr("b"), &2));
+        assert_eq!(most_common_list[0], (&char::fromStr("a"), &4));
+        assert_eq!(most_common_list[1], (&char::fromStr("b"), &3));
         assert_eq!(most_common_list[2], (&char::fromStr("c"), &2));
         assert_eq!(most_common_list[3], (&char::fromStr("d"), &1));
     }

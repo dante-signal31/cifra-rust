@@ -119,6 +119,7 @@ fn create_parameters<T,U>(ciphered_text: T, charset: U) -> Parameters
 mod tests {
     use super::*;
 
+    use serial_test::serial;
     use std::time::Instant;
     use crate::attack::dictionaries::tests::LoadedDictionaries;
     use crate::cipher::affine::decipher;

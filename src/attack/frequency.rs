@@ -309,7 +309,7 @@ fn find_not_adjacent_separations(sequences: &mut HashMap<String, Vec<usize>>) {
 
 /// Get substrings for a given step.
 ///
-/// ```
+/// ```ignore
 /// let ciphertext = "abc dabc dabcd abcd";
 /// let substrings = get_substrings(ciphertext, 4);
 /// assert_eq!(substrings[0] == "aaaa");
