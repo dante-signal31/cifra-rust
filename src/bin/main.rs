@@ -380,12 +380,11 @@ where T: AsRef<str>{
 /// Apply crypto attack to file to get most likely plain text.
 ///
 /// # Parameters:
-/// * input_filepath: Path to file to attack.
 /// * configuration: Cifra running configuration.
 ///
 /// # Returns:
 /// * Most likely original plain text.
-fn attack_file(input_filepath: T, configuration: &Configuration)-> String {
+fn attack_file(configuration: &Configuration)-> String {
     unimplemented!()
 }
 
