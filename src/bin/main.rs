@@ -363,7 +363,7 @@ pub fn parse_arguments(arg_vec: &Vec<&str>) -> Configuration {
 /// # Returns:
 /// * Processed resulting string.
 fn process_file_with_key(configuration: &Configuration)-> String {
-    unimplemented!()
+    todo!()
 }
 
 /// Helper generic function to output resulting content.
@@ -374,7 +374,7 @@ fn process_file_with_key(configuration: &Configuration)-> String {
 /// * configuration: Cifra running configurations.
 fn output_result<T>(result: T, configuration: &Configuration)
 where T: AsRef<str>{
-    unimplemented!()
+    todo!()
 }
 
 /// Apply crypto attack to file to get most likely plain text.
@@ -385,7 +385,7 @@ where T: AsRef<str>{
 /// # Returns:
 /// * Most likely original plain text.
 fn attack_file(configuration: &Configuration)-> String {
-    unimplemented!()
+    todo!()
 }
 
 fn _main(argv: Vec<&str>) {
