@@ -46,8 +46,8 @@ pub fn brute_force<T>(ciphered_text: T)-> Result<usize>
 ///
 /// # Returns:
 /// * Transposition key found.
-pub fn brute_force_mp<T>(ciphered_text: T)-> Result<usize>
-    where T: AsRef<str> + std::marker::Sync {
+// pub fn brute_force_mp<T>(ciphered_text: T)-> Result<usize>
+pub fn brute_force_mp(ciphered_text: &str)-> Result<usize> {
     let mut parameters = create_parameters(ciphered_text);
     simple_brute_force_mp(assess_transposition_key, &mut parameters)
 }
@@ -87,7 +87,6 @@ fn assess_transposition_key(parameters: &Parameters)-> Result<(usize, Identified
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serial_test::serial;
     use std::time::Instant;
     use crate::attack::dictionaries::tests::LoadedDictionaries;
     use crate::cipher::transposition::decipher;

@@ -545,7 +545,6 @@ pub mod tests {
     use test_common::fs::tmp::TestEnvironment;
     use test_common::system::env::TemporalEnvironmentVariable;
     use rstest::*;
-    use serial_test::serial;
     use std::ffi::OsString;
     use std::path::{Path, PathBuf};
     use std::io::{Write, BufReader, Read};
@@ -696,6 +695,12 @@ nahm.";
         }
     }
 
+    /// Used only as a fixture for tests.
+    #[fixture]
+    pub fn full_loaded_temp_dictionaries()-> LoadedDictionaries {
+        LoadedDictionaries::new()
+    }
+
     /// Get tuples with a language name, a text with punctuations marks and a text without it.
     fn get_text_tuples()-> Vec<(&'static str, &'static str, &'static str)> {
         vec![
@@ -721,7 +726,7 @@ nahm.";
     /// # Returns:
     /// Yields created temp_dir to host temporal dictionary database.
     #[fixture]
-    pub fn loaded_dictionary_temp_dir()-> (TestEnvironment, TemporalEnvironmentVariable) {
+    pub fn loaded_micro_dictionary_temp_dir() -> (TestEnvironment, TemporalEnvironmentVariable) {
         let (temp_env, temp_env_database_path) = temporary_database_folder(None);
         database::create_database();
         let micro_dictionaries= get_micro_dictionaries_content();
@@ -857,7 +862,7 @@ nahm.";
     /// Test delete a language also removes its words.
     fn test_delete_language() {
         let mut micro_dictionaries = get_micro_dictionaries_content();
-        let (temp_dir, temp_env_database_path) = loaded_dictionary_temp_dir();
+        let (temp_dir, temp_env_database_path) = loaded_micro_dictionary_temp_dir();
         let language_to_remove = "german";
         Dictionary::remove_dictionary(language_to_remove);
         // Check all words from removed language have been removed too.
@@ -1012,7 +1017,7 @@ nahm.";
     }
 
     #[rstest]
-    fn test_get_all_words(loaded_dictionary_temp_dir: (TestEnvironment, TemporalEnvironmentVariable)) {
+    fn test_get_all_words(loaded_micro_dictionary_temp_dir: (TestEnvironment, TemporalEnvironmentVariable)) {
         let expected_words: HashSet<String> = HashSet::from_iter(vec!["yes".to_string(),
                                                      "no".to_string(),
                                                      "dog".to_string(),

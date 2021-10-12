@@ -32,10 +32,11 @@ enum Vigenere {
 ///
 /// # Returns:
 /// * Ciphered text.
-pub fn cipher<T, U, V>(text: T, key: U, charset: V) -> Result<String>
-    where T: AsRef<str>,
-          U: AsRef<str>,
-          V: AsRef<str> {
+// pub fn cipher<T, U, V>(text: T, key: U, charset: V) -> Result<String>
+//     where T: AsRef<str>,
+//           U: AsRef<str>,
+//           V: AsRef<str> {
+pub fn cipher(text: &str, key: &str, charset: &str) -> Result<String> {
     let ciphered_text = vigenere_offset(text, key, Vigenere::CIPHER, charset);
     ciphered_text
 }
@@ -53,10 +54,11 @@ pub fn cipher<T, U, V>(text: T, key: U, charset: V) -> Result<String>
 ///
 /// # Returns:
 /// * Deciphered text.
-pub fn decipher<T, U, V>(ciphered_text: T, key: U, charset: V) -> Result<String>
-    where T: AsRef<str>,
-          U: AsRef<str>,
-          V: AsRef<str> {
+// pub fn decipher<T, U, V>(ciphered_text: T, key: U, charset: V) -> Result<String>
+//     where T: AsRef<str>,
+//           U: AsRef<str>,
+//           V: AsRef<str> {
+pub fn decipher(ciphered_text: &str, key: &str, charset: &str) -> Result<String> {
     let deciphered_text = vigenere_offset(ciphered_text, key, Vigenere::DECIPHER, charset);
     deciphered_text
 }

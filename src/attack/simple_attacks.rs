@@ -263,7 +263,7 @@ pub fn assess_key(decipher_function: GetString, decipher_function_args: &Paramet
 mod tests {
     use super::*;
     use rstest::*;
-    use crate::attack::dictionaries::tests::{loaded_dictionary_temp_dir, MicroDictionaries};
+    use crate::attack::dictionaries::tests::{loaded_micro_dictionary_temp_dir, MicroDictionaries};
     use test_common::fs::tmp::TestEnvironment;
     use test_common::system::env::TemporalEnvironmentVariable;
     use std::collections::HashSet;
@@ -278,7 +278,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_dictionary_word_key_generator(loaded_dictionary_temp_dir: (TestEnvironment, TemporalEnvironmentVariable)) {
+    fn test_dictionary_word_key_generator(loaded_micro_dictionary_temp_dir: (TestEnvironment, TemporalEnvironmentVariable)) {
         let micro_dictionaries = MicroDictionaries::new();
         let expected_words: Vec<String> = micro_dictionaries._languages
             .keys()

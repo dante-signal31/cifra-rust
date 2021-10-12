@@ -53,9 +53,10 @@ pub fn brute_force<T, U>(ciphered_text: T, charset: U) -> Result<usize>
 ///
 /// # Returns:
 /// * Caesar key found.
-pub fn brute_force_mp<T,U>(ciphered_text: T, charset: U) -> Result<usize>
-    where T: AsRef<str> + std::marker::Sync,
-          U: AsRef<str> + std::marker::Sync {
+// pub fn brute_force_mp<T,U>(ciphered_text: T, charset: U) -> Result<usize>
+//     where T: AsRef<str> + std::marker::Sync,
+//           U: AsRef<str> + std::marker::Sync {
+pub fn brute_force_mp(ciphered_text: &str, charset: &str) -> Result<usize> {
     let mut parameters = create_parameters(ciphered_text, charset);
     simple_brute_force_mp(assess_caesar_key, &mut parameters)
 }
@@ -132,7 +133,6 @@ fn get_best_result(identified_languages: &Vec<(usize, IdentifiedLanguage)>)-> us
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serial_test::serial;
     use std::time::Instant;
     use crate::attack::dictionaries::tests::LoadedDictionaries;
     use crate::cipher::caesar::decipher;

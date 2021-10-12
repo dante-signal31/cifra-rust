@@ -25,9 +25,10 @@ use crate::Result;
 ///
 /// # Returns:
 /// * Ciphered text.
-pub fn cipher<T, U>(text: T, key: usize, charset: U)-> Result<String>
-    where T: AsRef<str>,
-          U: AsRef<str> {
+// pub fn cipher<T, U>(text: T, key: usize, charset: U)-> Result<String>
+//     where T: AsRef<str>,
+//           U: AsRef<str> {
+pub fn cipher(text: &str, key: usize, charset: &str)-> Result<String> {
     let ciphered_text = offset_text(text, key, true, &Ciphers::CAESAR, charset);
     ciphered_text
 }
@@ -46,9 +47,10 @@ pub fn cipher<T, U>(text: T, key: usize, charset: U)-> Result<String>
 ///
 /// # Returns:
 /// * Deciphered text.
-pub fn decipher<T, U>(ciphered_text: T, key: usize, charset: U)-> Result<String>
-    where T: AsRef<str>,
-          U: AsRef<str> {
+// pub fn decipher<T, U>(ciphered_text: T, key: usize, charset: U)-> Result<String>
+//     where T: AsRef<str>,
+//           U: AsRef<str> {
+pub fn decipher(ciphered_text: &str, key: usize, charset: &str)-> Result<String> {
     let deciphered_text = offset_text(ciphered_text, key, false, &Ciphers::CAESAR, charset)?;
     Ok(deciphered_text)
 }
@@ -72,19 +74,19 @@ pub fn decipher_par(parameters: &Parameters)-> Result<String> {
     let ciphered_text = parameters.get_str("ciphered_text")?;
     let charset = parameters.get_str("charset")?;
     let key = parameters.get_int("key")?;
-    decipher(ciphered_text, key, charset)
+    decipher(ciphered_text.as_str(), key, charset.as_str())
 }
 
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
 
     use crate::cipher::common::DEFAULT_CHARSET;
 
-    const ORIGINAL_MESSAGE: &str = "This is my secret message.";
-    const CIPHERED_MESSAGE_KEY_13: &str = "guv6Jv6Jz!J6rp5r7Jzr66ntrM";
-    const TEST_KEY: usize = 13;
+    pub const ORIGINAL_MESSAGE: &str = "This is my secret message.";
+    pub const CIPHERED_MESSAGE_KEY_13: &str = "guv6Jv6Jz!J6rp5r7Jzr66ntrM";
+    pub const TEST_KEY: usize = 13;
 
     #[test]
     fn test_cipher() {

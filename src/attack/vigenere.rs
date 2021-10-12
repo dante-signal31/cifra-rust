@@ -33,10 +33,21 @@ use crate::Result;
 ///
 /// # Returns:
 /// * Most probable Vigenere key found.
-fn brute_force<T, U>(ciphered_text: T, charset: U, testing: bool)-> Result<usize>
+pub fn brute_force<T, U>(ciphered_text: T, charset: U, testing: bool)-> Result<String>
     where T: AsRef<str>,
           U: AsRef<str> {
     // let mut parameters = create_parameters(ciphered_text, charset);
     // simple_brute_force(assess_affine_key, &mut parameters)
     unimplemented!()
 }
+
+// pub fn brute_force_mp<T, U>(ciphered_text: T, charset: U, testing: bool)-> Result<String>
+//     where T: AsRef<str>,
+//           U: AsRef<str> {
+pub fn brute_force_mp(ciphered_text: &str, charset: &str, testing: bool)-> Result<String> {
+    // let mut parameters = create_parameters(ciphered_text, charset);
+    // simple_brute_force(assess_affine_key, &mut parameters)
+    unimplemented!()
+}
+
+// TODO: Implement this module.

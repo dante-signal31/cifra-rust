@@ -1,13 +1,21 @@
-extern crate cifra_rust;
+extern crate cifra;
 
+use std::collections::HashSet;
 use std::convert::TryFrom;
+use std::fs::{File, read, read_to_string, write};
+use std::io::Read;
 use std::path::PathBuf;
+use std::str::FromStr;
+use std::env::args;
 use clap::{Arg, App, ArgMatches};
+use error_chain::bail;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use cifra_rust::cipher::common::DEFAULT_CHARSET;
-use cifra_rust::attack::dictionaries::Dictionary;
+use cifra::{ErrorKind, Result, ResultExt, Error};
+use cifra::cipher::common::DEFAULT_CHARSET;
+use cifra::attack::dictionaries::Dictionary;
+use cifra::ErrorKind::{ConversionError, IOError};
 
 /// Get an string containing current app version.
 ///
@@ -22,7 +30,7 @@ fn get_version()-> String {
 }
 
 /// Ciphering algorithms cifra-rust understand about.
-#[derive(EnumIter, Debug, PartialEq)]
+#[derive(EnumIter, Debug, PartialEq, Clone)]
 enum CipheringAlgorithms {
     Caesar,
     Substitution,
@@ -32,6 +40,8 @@ enum CipheringAlgorithms {
 }
 
 impl CipheringAlgorithms {
+
+    /// Get a list with every possible variant this enum can adopt.
     pub fn get_all_possible_values()-> Vec<String>{
         let mut values: Vec<String> = Vec::new();
         for algorithm in CipheringAlgorithms::iter() {
@@ -40,10 +50,34 @@ impl CipheringAlgorithms {
         }
         values
     }
+
+    /// Get a set with every ciphering variant that uses a string as a key.
+    pub fn get_string_key_algorithms()-> HashSet<String> {
+        let key_algorithms: HashSet<String> = vec!["substitution", "vigenere"].into_iter()
+            .map(|str| String::from(str))
+            .collect();
+        key_algorithms
+    }
+
+    /// Get a set with every ciphering variant that uses a integer number as a key.
+    pub fn get_integer_key_algorithms()-> HashSet<String> {
+        let all_algorithms: HashSet<String> = Self::get_all_possible_values().into_iter().collect();
+        let key_algorithms: HashSet<String> = Self::get_string_key_algorithms();
+        let integer_algorithms: HashSet<String> = all_algorithms.difference(&key_algorithms)
+            .into_iter()
+            .map(|Str| Str.clone())
+            .collect();
+        integer_algorithms
+    }
+
+    /// Get current value as an string.
+    pub fn get_string_value(&self)-> String {
+        format!("{:?}", self)
+    }
 }
 
 impl TryFrom<&str> for CipheringAlgorithms {
-    type Error = String;
+    type Error = cifra::Error;
 
     /// Get a CipheringAlgorithm variant depending on a provided string name.
     ///
@@ -54,7 +88,7 @@ impl TryFrom<&str> for CipheringAlgorithms {
     ///
     /// # Returns:
     /// * OK with variant or Err if provided name is not a known variant.
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    fn try_from(value: &str) -> Result<Self> {
         let normalized_value = value.to_lowercase();
         match normalized_value.as_str() {
             "caesar"=> Ok(CipheringAlgorithms::Caesar),
@@ -62,7 +96,7 @@ impl TryFrom<&str> for CipheringAlgorithms {
             "transposition"=> Ok(CipheringAlgorithms::Transposition),
             "affine"=> Ok(CipheringAlgorithms::Affine),
             "vigenere"=> Ok(CipheringAlgorithms::Vigenere),
-            _=> Err(format!("Unknown algorithm: {}", value))
+            _=> bail!(format!("Unknown algorithm: {}", value))
         }
     }
 }
@@ -81,6 +115,30 @@ enum Modes {
         charset: Option<String>},
 }
 
+// impl Modes {
+//     /// True if they are the same Modes variant independently of their inner fields.
+//     pub fn same_type_as(&self, other: Modes)-> bool {
+//         match *self {
+//             Self::Dictionary(_)=> return other == Self::Dictionary(actions),
+//             Self::Cipher { .. }=> if let Self::Cipher {..} = other {
+//                 return true
+//             } else {
+//                 return false
+//             },
+//             Self::Decipher {..}=> if let Self::Decipher {..} = other {
+//                 return true
+//             } else {
+//                 return false
+//             },
+//             Self::Attack {..}=> if let Self::Attack {..} = other {
+//                 return true
+//             } else {
+//                 return false
+//             }
+//         }
+//     }
+// }
+
 /// What you can do with a dictionary.
 #[derive(Debug, PartialEq)]
 enum DictionaryActions {
@@ -92,8 +150,17 @@ enum DictionaryActions {
 
 /// Configuration to run app.
 #[derive(Debug, PartialEq)]
-pub struct Configuration {
+struct Configuration {
     running_mode: Modes,
+}
+
+impl Configuration {
+    /// Create a new configuration instance with given mode.
+    pub fn new(mode: Modes)-> Self {
+        Configuration{
+            running_mode: mode
+        }
+    }
 }
 
 impl From<ArgMatches> for Configuration {
@@ -105,6 +172,8 @@ impl From<ArgMatches> for Configuration {
     /// # Returns:
     /// * A Configuration type.
     fn from(matches: ArgMatches) -> Self {
+        // I use unwrap() liberally in this function because parse_arguments() enforces which
+        // arguments are required, so I'm sure they are there when I unwrap them.
         if let Some(_matches) = matches.subcommand_matches("dictionary") {
             if let Some(__matches) = _matches.subcommand_matches("create"){
                 return Configuration{
@@ -200,7 +269,7 @@ impl From<ArgMatches> for Configuration {
 ///
 /// # Returns:
 /// * Ok(()) if file exists Err if not.
-fn file_exists(path: &str)-> Result<(), String>{
+fn file_exists(path: &str)-> std::result::Result<(), String>{
     let pathbuf = PathBuf::from(path);
     if pathbuf.exists(){
         Ok(())
@@ -217,7 +286,7 @@ fn file_exists(path: &str)-> Result<(), String>{
 ///
 ///# Returns:
 /// * A cifra Configuration type.
-pub fn parse_arguments(arg_vec: &Vec<&str>) -> Configuration {
+fn parse_arguments(arg_vec: &Vec<&str>) -> Configuration {
     let algorithm_options = CipheringAlgorithms::get_all_possible_values();
     let algorithm_options_str: Vec<&str> = algorithm_options.iter().map(|str| str.as_str()).collect();
     let matches = App::new("cifra")
@@ -362,8 +431,88 @@ pub fn parse_arguments(arg_vec: &Vec<&str>) -> Configuration {
 ///
 /// # Returns:
 /// * Processed resulting string.
-fn process_file_with_key(configuration: &Configuration)-> String {
-    todo!()
+fn process_file_with_key(configuration: &Configuration)-> Result<String> {
+    match &configuration.running_mode {
+        Modes::Cipher { algorithm, key, file_to_cipher,
+            ciphered_file, charset } => {
+                let input_file_path = file_to_cipher;
+                let mut content_to_process = read_to_string(input_file_path)
+                    .chain_err(|| IOError(String::from(input_file_path.to_str().unwrap())))?;
+                let processed_content: String;
+                match algorithm {
+                    CipheringAlgorithms::Caesar | CipheringAlgorithms::Affine=> {
+                        let process_function: fn(&str, usize, &str)-> Result<String> = get_integer_key_and_charset_ciphering_function(algorithm)?;
+                        let process_key = usize::from_str(key.as_str())
+                            .chain_err(|| ConversionError("key", "&String", "usize"))?;
+                        if let Some(charset_string) = charset {
+                            processed_content = process_function(&content_to_process, process_key, charset_string)
+                                .chain_err(|| "Error ciphering text.")?;
+                        } else {
+                            processed_content = process_function(&content_to_process, process_key, DEFAULT_CHARSET)
+                                .chain_err(|| "Error ciphering text.")?;
+                        }
+                    },
+                    CipheringAlgorithms::Substitution | CipheringAlgorithms::Vigenere=> {
+                        let process_function: fn(&str, &str, &str)-> Result<String> = get_string_key_and_charset_ciphering_function(algorithm)?;
+                        if let Some(charset_string) = charset {
+                            processed_content = process_function(&content_to_process, key, charset_string)
+                                .chain_err(|| "Error ciphering text.")?;
+                        } else {
+                            processed_content = process_function(&content_to_process, key, DEFAULT_CHARSET)
+                                .chain_err(|| "Error ciphering text.")?;
+                        }
+                    },
+                    CipheringAlgorithms::Transposition=> {
+                        let process_function: fn(&str, usize)-> String = get_integer_key_ciphering_function(algorithm)?;
+                        let process_key = usize::from_str(key.as_str())
+                            .chain_err(|| ConversionError("key", "&String", "usize"))?;
+                        processed_content = process_function(&content_to_process, process_key);
+                    }
+                }
+                return Ok(processed_content)
+        }
+        Modes::Decipher { algorithm, key,
+            file_to_decipher , deciphered_file, charset } => {
+            let input_file_path = file_to_decipher;
+            let mut content_to_process = read_to_string(input_file_path)
+                .chain_err(|| IOError(String::from(input_file_path.to_str().unwrap())))?;
+            let processed_content: String;
+            match algorithm {
+                CipheringAlgorithms::Caesar | CipheringAlgorithms::Affine=> {
+                    let process_function: fn(&str, usize, &str)-> Result<String> = get_integer_key_and_charset_deciphering_function(algorithm)?;
+                    let process_key = usize::from_str(key.as_str())
+                        .chain_err(|| ConversionError("key", "&String", "usize"))?;
+                    if let Some(charset_string) = charset {
+                        processed_content = process_function(&content_to_process, process_key, charset_string)
+                            .chain_err(|| "Error deciphering text.")?;
+                    } else {
+                        processed_content = process_function(&content_to_process, process_key, DEFAULT_CHARSET)
+                            .chain_err(|| "Error deciphering text.")?;
+                    }
+                },
+                CipheringAlgorithms::Substitution | CipheringAlgorithms::Vigenere=> {
+                    let process_function: fn(&str, &str, &str)-> Result<String> = get_string_key_and_charset_deciphering_function(algorithm)?;
+                    if let Some(charset_string) = charset {
+                        processed_content = process_function(&content_to_process, key, charset_string)
+                            .chain_err(|| "Error deciphering text.")?;
+                    } else {
+                        processed_content = process_function(&content_to_process, key, DEFAULT_CHARSET)
+                            .chain_err(|| "Error deciphering text.")?;
+                    }
+                },
+                CipheringAlgorithms::Transposition=> {
+                    let process_function: fn(&str, usize)-> Result<String> = get_integer_key_deciphering_function(algorithm)?;
+                    let process_key = usize::from_str(key.as_str())
+                        .chain_err(|| ConversionError("key", "&String", "usize"))?;
+                    processed_content = process_function(&content_to_process, process_key)
+                        .chain_err(|| "Error deciphering text.")?;
+                }
+            }
+            return Ok(processed_content)
+        }
+        _ => bail!("Can only process here files to cipher or decipher, but asked an unsupported \
+        operation instead.")
+    }
 }
 
 /// Helper generic function to output resulting content.
@@ -372,9 +521,29 @@ fn process_file_with_key(configuration: &Configuration)-> String {
 /// * result: String with resulting processed content. If an output file has been requested then
 /// result is written to that file or to screen otherwise.
 /// * configuration: Cifra running configurations.
-fn output_result<T>(result: T, configuration: &Configuration)
-where T: AsRef<str>{
-    todo!()
+fn output_result<T>(result: T, configuration: &Configuration)-> Result<()>
+where T: AsRef<str> {
+    let output_file_option: &Option<PathBuf>;
+    match &configuration.running_mode {
+        Modes::Cipher { algorithm, key, file_to_cipher,
+            ciphered_file, charset } => {
+            output_file_option = ciphered_file;
+        },
+        Modes::Decipher { algorithm, key, file_to_decipher,
+            deciphered_file, charset }=> {
+            output_file_option = deciphered_file;
+        },
+        _ => {
+            println!("{}", result.as_ref());
+            return Ok(())
+        }
+    }
+    return if let Some(output_file_path) = output_file_option {
+        write(output_file_path, result.as_ref());
+        Ok(())
+    } else {
+        bail!("Output file not provided")
+    }
 }
 
 /// Apply crypto attack to file to get most likely plain text.
@@ -384,9 +553,198 @@ where T: AsRef<str>{
 ///
 /// # Returns:
 /// * Most likely original plain text.
-fn attack_file(configuration: &Configuration)-> String {
-    todo!()
+fn attack_file(configuration: &Configuration)-> Result<String> {
+    if let Modes::Attack { algorithm, file_to_attack,
+        deciphered_file, charset } = &configuration.running_mode {
+        let ciphered_content = read_to_string(file_to_attack)
+            .expect("Error reading file to attack.");
+        match algorithm {
+            CipheringAlgorithms::Caesar | CipheringAlgorithms::Affine => {
+                let attack_function: fn(&str, &str)-> Result<usize> = get_charset_attack_function(algorithm)
+                    .chain_err(||"Error getting attack function.")?;
+                let key = if let Some(charset_str) = charset {
+                        attack_function(ciphered_content.as_str(), charset_str)?
+                    } else {
+                        attack_function(ciphered_content.as_str(), DEFAULT_CHARSET)?
+                    };
+                let deciphered_text = process_file_with_key(&Configuration::new(Modes::Decipher {
+                    algorithm: algorithm.clone(),
+                    key: usize::to_string(&key),
+                    file_to_decipher: file_to_attack.clone(),
+                    deciphered_file: deciphered_file.clone(),
+                    charset: charset.clone()
+                }));
+                return deciphered_text
+            },
+            CipheringAlgorithms::Substitution => {
+                let attack_function: fn(&str, &str)-> Result<(String, f64)> = get_string_key_and_charset_attack_function(algorithm)
+                    .chain_err(||"Error getting attack function.")?;
+                let (key, _) = if let Some(charset_str) = charset {
+                    attack_function(ciphered_content.as_str(), charset_str)?
+                } else {
+                    attack_function(ciphered_content.as_str(), DEFAULT_CHARSET)?
+                };
+                let deciphered_text = process_file_with_key(&Configuration::new(Modes::Decipher {
+                    algorithm: algorithm.clone(),
+                    key: key.clone(),
+                    file_to_decipher: file_to_attack.clone(),
+                    deciphered_file: deciphered_file.clone(),
+                    charset: charset.clone()
+                }));
+                return deciphered_text
+            },
+            CipheringAlgorithms::Transposition => {
+                let attack_function: fn(&str)-> Result<usize> = get_no_charset_attack_function(algorithm)
+                    .chain_err(||"Error getting attack function.")?;
+                let key = attack_function(ciphered_content.as_str())?;
+                let deciphered_text = process_file_with_key(&Configuration::new(Modes::Decipher {
+                    algorithm: algorithm.clone(),
+                    key: usize::to_string(&key),
+                    file_to_decipher: file_to_attack.clone(),
+                    deciphered_file: deciphered_file.clone(),
+                    charset: charset.clone()
+                }));
+                return deciphered_text
+            },
+            CipheringAlgorithms::Vigenere => {
+                let attack_function: fn(&str, &str, bool)-> Result<String> = get_testing_mode_attack_function(algorithm)
+                    .chain_err(||"Error getting attack function.")?;
+                let key= if let Some(charset_str) = charset {
+                    attack_function(ciphered_content.as_str(), charset_str, false)?
+                } else {
+                    attack_function(ciphered_content.as_str(), DEFAULT_CHARSET, false)?
+                };
+                let deciphered_text = process_file_with_key(&Configuration::new(Modes::Decipher {
+                    algorithm: algorithm.clone(),
+                    key: key.clone(),
+                    file_to_decipher: file_to_attack.clone(),
+                    deciphered_file: deciphered_file.clone(),
+                    charset: charset.clone()
+                }));
+                return deciphered_text
+            },
+        }
+    } else {
+        return bail!("You tried to use attack_file function with a configuration that is not for attack mode.")
+    }
 }
+
+
+/// Get a pointer to ciphering function for given algorithm.
+///
+/// Use only with algorithms that use integer keys and charsets.
+fn get_integer_key_and_charset_ciphering_function(algorithm: &CipheringAlgorithms)-> Result<fn(&str, usize, &str)-> Result<String>> {
+    let function = match algorithm {
+        CipheringAlgorithms::Caesar=> cifra::cipher::caesar::cipher,
+        CipheringAlgorithms::Affine=> cifra::cipher::affine::cipher,
+        _ => return bail!("Given algorithm does not use integer key and charset.")
+    };
+    Ok(function)
+}
+
+/// Get a pointer to ciphering function for given algorithm.
+///
+/// Use only with algorithms that use string keys and charsets.
+fn get_string_key_and_charset_ciphering_function(algorithm: &CipheringAlgorithms)-> Result<fn(&str, &str, &str)-> Result<String>> {
+    let function = match algorithm {
+        CipheringAlgorithms::Substitution => cifra::cipher::substitution::cipher,
+        CipheringAlgorithms::Vigenere=> cifra::cipher::vigenere::cipher,
+        _ => return bail!("Given algorithm does not use string key and charset.")
+    };
+    Ok(function)
+}
+
+/// Get a pointer to ciphering function for given algorithm.
+///
+/// Use only with algorithms that use integer keys but not charsets.
+fn get_integer_key_ciphering_function(algorithm: &CipheringAlgorithms)-> Result<fn(&str, usize)-> String> {
+    let function = match algorithm {
+        CipheringAlgorithms::Transposition => cifra::cipher::transposition::cipher,
+        _ => return bail!("Given algorithm does not use integer key or includes a charset.")
+    };
+    Ok(function)
+}
+
+/// Get a pointer to deciphering function for given algorithm.
+///
+/// Use only with algorithms that use integer keys and charsets.
+fn get_integer_key_and_charset_deciphering_function(algorithm: &CipheringAlgorithms)-> Result<fn(&str, usize, &str)-> Result<String>> {
+    let function = match algorithm {
+        CipheringAlgorithms::Caesar=> cifra::cipher::caesar::decipher,
+        CipheringAlgorithms::Affine=> cifra::cipher::affine::decipher,
+        _ => return bail!("Given algorithm does not use integer key and charset.")
+    };
+    Ok(function)
+}
+
+/// Get a pointer to deciphering function for given algorithm.
+///
+/// Use only with algorithms that use string keys and charsets.
+fn get_string_key_and_charset_deciphering_function(algorithm: &CipheringAlgorithms)-> Result<fn(&str, &str, &str)-> Result<String>> {
+    let function = match algorithm {
+        CipheringAlgorithms::Substitution => cifra::cipher::substitution::decipher,
+        CipheringAlgorithms::Vigenere=> cifra::cipher::vigenere::decipher,
+        _ => return bail!("Given algorithm does not use string key and charset.")
+    };
+    Ok(function)
+}
+
+/// Get a pointer to deciphering function for given algorithm.
+///
+/// Use only with algorithms that use integer keys but not charsets.
+fn get_integer_key_deciphering_function(algorithm: &CipheringAlgorithms)-> Result<fn(&str, usize)-> Result<String>> {
+    let function = match algorithm {
+        CipheringAlgorithms::Transposition => cifra::cipher::transposition::decipher,
+        _ => return bail!("Given algorithm does not use integer key or includes a charset.")
+    };
+    Ok(function)
+}
+
+/// Get a pointer to attack function for given algorithm.
+///
+/// Use only with algorithms that use charsets.
+fn get_charset_attack_function(algorithm: &CipheringAlgorithms)-> Result<fn(&str, &str)-> Result<usize>>{
+    let function = match algorithm {
+        CipheringAlgorithms::Caesar => cifra::attack::caesar::brute_force_mp,
+        CipheringAlgorithms::Affine=> cifra::attack::affine::brute_force_mp,
+        _ => return bail!("Given algorithm does not use charset.")
+    };
+    Ok(function)
+}
+
+/// Get a pointer to attack function for given algorithm.
+///
+/// Use only with algorithms that return a string key and a float tuple.
+fn get_string_key_and_charset_attack_function(algorithm: &CipheringAlgorithms)-> Result<fn(&str, &str)-> Result<(String, f64)>>{
+    let function = match algorithm {
+        CipheringAlgorithms::Substitution=> cifra::attack::substitution::hack_substitution_mp,
+        _ => return bail!("Given algorithm do use string key and charset")
+    };
+    Ok(function)
+}
+
+/// Get a pointer to attack function for given algorithm.
+///
+/// Use only with algorithms that don't use charsets.
+fn get_no_charset_attack_function(algorithm: &CipheringAlgorithms)-> Result<fn(&str)-> Result<usize>>{
+    let function = match algorithm {
+        CipheringAlgorithms::Transposition=> cifra::attack::transposition::brute_force_mp,
+        _ => return bail!("Given algorithm do use charset.")
+    };
+    Ok(function)
+}
+
+/// Get a pointer to attack function for given algorithm.
+///
+/// Use only with algorithms that have charset and a testing mode.
+fn get_testing_mode_attack_function(algorithm: &CipheringAlgorithms)-> Result<fn(&str, &str, bool)-> Result<String>>{
+    let function = match algorithm {
+        CipheringAlgorithms::Vigenere=> cifra::attack::vigenere::brute_force_mp,
+        _ => return bail!("Given algorithm don't have testing mode.")
+    };
+    Ok(function)
+}
+
 
 fn _main(argv: Vec<&str>) {
     let configuration = parse_arguments(&argv);
@@ -420,17 +778,25 @@ fn _main(argv: Vec<&str>) {
             let dictionaries = Dictionary::get_dictionaries_names()
                 .expect("Error retrieving available dictionaries.");
             for dictionary in &dictionaries{
-                println!(dictionary);
+                println!("{}", dictionary);
             }
         }
         // Ciphering management.
-        Modes::Cipher | Modes::Decipher => {
-            let ciphered_content = process_file_with_key(&configuration);
-            output_result(&ciphered_content, &configuration);
+        //Modes::Cipher{ algorithm, key, file_to_cipher, ciphered_file, charset }
+        Modes::Cipher{ .. }
+        //| Modes::Decipher { algorithm, key, file_to_decipher, deciphered_file, charset }=> {
+        | Modes::Decipher { .. }=> {
+            let ciphered_content = process_file_with_key(&configuration)
+                .expect("Error deciphering text.");
+            output_result(&ciphered_content, &configuration)
+                .expect("Error outputting recovered text.");
         }
-        Modes::Attack=> {
-            let recovered_content = attack_file(&configuration_mode);
+        // Modes::Attack{ algorithm, file_to_attack, deciphered_file, charset }=> {
+        Modes::Attack{ .. }=> {
+            let recovered_content = attack_file(&configuration)
+                .expect("Error attacking ciphered text.");
             output_result(&recovered_content, &configuration)
+                .expect("Error outputting recovered text.");
         }
     }
 }
@@ -438,14 +804,117 @@ fn _main(argv: Vec<&str>) {
 fn main() {
     // I make an indirection to run functional test feeding my own vector to _main().
     // Shame on Rust for not having default arguments!
-    _main(sys.args);
+    let args: Vec<String> = args().collect();
+    let args_str: Vec<&str> = args.iter().map(|Str| Str.as_str()).collect();
+    _main(args_str);
 }
 
 #[cfg(test)]
 mod tests {
+    extern crate cifra;
+
+    use rstest::*;
+    use std::fs::create_dir;
+    use std::env;
     use std::path::Path;
     use super::*;
+
     use test_common::fs::tmp::{TestEnvironment, TestFile};
+    use test_common::fs::ops::copy_files;
+    use test_common::system::env::TemporalEnvironmentVariable;
+
+    use cifra::attack::database;
+
+    const CAESAR_ORIGINAL_MESSAGE: &str = "This is my secret message.";
+    const CAESAR_CIPHERED_MESSAGE_KEY_13: &str = "guv6Jv6Jz!J6rp5r7Jzr66ntrM";
+    const CAESAR_TEST_KEY: usize = 13;
+    const SUBSTITUTION_TEST_CHARSET: &'static str = "abcdefghijklmnopqrstuvwxyz";
+    const SUBSTITUTION_TEST_KEY: &'static str =     "lfwoayuisvkmnxpbdcrjtqeghz";
+    const SUBSTITUTION_ORIGINAL_MESSAGE: &'static str  = "If a man is offered a fact which goes against his \
+                                    instincts, he will scrutinize it closely, and unless \
+                                    the evidence is overwhelming, he will refuse to believe \
+                                    it. If, on the other hand, he is offered something which \
+                                    affords a reason for acting in accordance to his \
+                                    instincts, he will accept it even on the slightest \
+                                    evidence. The origin of myths is explained in this way. \
+                                    -Bertrand Russell";
+    const SUBSTITUTION_CIPHERED_MESSAGE: &'static str = "Sy l nlx sr pyyacao l ylwj eiswi upar lulsxrj isr \
+                                    sxrjsxwjr, ia esmm rwctjsxsza sj wmpramh, lxo txmarr \
+                                    jia aqsoaxwa sr pqaceiamnsxu, ia esmm caytra \
+                                    jp famsaqa sj. Sy, px jia pjiac ilxo, ia sr \
+                                    pyyacao rpnajisxu eiswi lyypcor l calrpx ypc \
+                                    lwjsxu sx lwwpcolxwa jp isr sxrjsxwjr, ia esmm \
+                                    lwwabj sj aqax px jia rmsuijarj aqsoaxwa. Jia pcsusx \
+                                    py nhjir sr agbmlsxao sx jisr elh. -Facjclxo Ctrramm";
+
+    const LANGUAGES: [&'static str; 4] = ["english", "spanish", "french", "german"];
+
+    /// Class with info to use a temporary dictionaries database.
+    pub struct LoadedDictionaries {
+        pub temp_dir: PathBuf,
+        pub languages: Vec<String>,
+        temp_env: TestEnvironment,
+        temp_env_var: TemporalEnvironmentVariable
+    }
+
+    impl LoadedDictionaries {
+        pub fn new()-> Self {
+            let (temp_env, temp_env_var) = temporary_database_folder(None);
+            database::create_database();
+            let temp_dir = temp_env.path().to_owned();
+            let mut resources_path = temp_dir.clone();
+            resources_path.push("resources");
+            create_dir(&resources_path);
+            let mut source_path = env::current_dir()
+                .expect("Could not get current working dir");
+            source_path.push("resources");
+            copy_files(LANGUAGES.iter()
+                           .map(|x| format!("{}/{}_book.txt", source_path.to_str().expect("Path contains non unicode characters"), x))
+                           .collect(),
+                       resources_path.as_path().as_os_str().to_str()
+                           .expect("Path contains not unicode characters."))
+                .expect("Error copying books to temporal folder.");
+            for _language in LANGUAGES.iter() {
+                let mut dictionary = Dictionary::new(_language, true)
+                    .expect(format!("No dictionary found for {} language.", _language).as_str());
+                let mut language_book = resources_path.clone();
+                language_book.push(format!("{}_book.txt", _language));
+                dictionary.populate(language_book);
+            }
+            let mut _languages = Vec::new();
+            LANGUAGES.iter().map(|x| _languages.push(x.to_string())).collect::<Vec<_>>();
+            LoadedDictionaries{
+                temp_dir,
+                languages: _languages,
+                temp_env,
+                temp_env_var
+            }
+        }
+    }
+
+    /// Creates a temporary folder and set that folder at database home.
+    ///
+    /// # Returns:
+    /// You may not use then, but keep them in scope or temp folder will be removed
+    /// and environment var to find database will be restored to its default value.
+    fn temporary_database_folder(temp_dir: Option<TestEnvironment>)-> (TestEnvironment, TemporalEnvironmentVariable){
+        let temp_dir = match temp_dir {
+            None => TestEnvironment::new(),
+            Some(test_env) => test_env
+        };
+        let mut temp_database_path = PathBuf::from(temp_dir.path());
+        temp_database_path.push("cifra_database.sqlite");
+        let temp_env_database_path = TemporalEnvironmentVariable::new(database::DATABASE_ENV_VAR,
+                                                                      temp_database_path.as_os_str().to_str()
+                                                                          .expect("Path contains non unicode chars."));
+        (temp_dir, temp_env_database_path)
+    }
+
+    /// Used only as a fixture for tests.
+    #[fixture]
+    pub fn full_loaded_temp_dictionaries()-> LoadedDictionaries {
+        LoadedDictionaries::new()
+    }
 
     #[test]
     fn test_parser_create_dictionary() {
@@ -599,4 +1068,38 @@ mod tests {
         let recovered_configuration = parse_arguments(&provided_args);
         assert_eq!(expected_configuration, recovered_configuration);
     }
+
+    #[rstest]
+    fn test_cipher_caesar(full_loaded_temp_dictionaries: LoadedDictionaries) {
+        let message_file = TestFile::new();
+        write(message_file.path(), CAESAR_ORIGINAL_MESSAGE);
+        let output_file_name = full_loaded_temp_dictionaries.temp_dir.join("ciphered_message.txt");
+        let provided_args = format!("cifra cipher caesar {} {} --ciphered_file {}",
+                                    CAESAR_TEST_KEY,
+                                    message_file.path().to_str().unwrap(),
+                                    output_file_name.to_str().unwrap());
+        let provided_args_vec: Vec<&str> = provided_args.split_whitespace().collect();
+        _main(provided_args_vec);
+        if let Ok(recovered_content) = read_to_string(&output_file_name){
+            assert_eq!(CAESAR_CIPHERED_MESSAGE_KEY_13, recovered_content)
+        }
+    }
+
+    #[rstest]
+    fn test_decipher_caesar(full_loaded_temp_dictionaries: LoadedDictionaries) {
+        let message_file = TestFile::new();
+        write(message_file.path(), CAESAR_CIPHERED_MESSAGE_KEY_13);
+        let output_file_name = full_loaded_temp_dictionaries.temp_dir.join("deciphered_message.txt");
+        let provided_args = format!("cifra decipher caesar {} {} --deciphered_file {}",
+                                    CAESAR_TEST_KEY,
+                                    message_file.path().to_str().unwrap(),
+                                    output_file_name.to_str().unwrap());
+        let provided_args_vec: Vec<&str> = provided_args.split_whitespace().collect();
+        _main(provided_args_vec);
+        if let Ok(recovered_content) = read_to_string(&output_file_name){
+            assert_eq!(CAESAR_ORIGINAL_MESSAGE, recovered_content)
+        }
+    }
+
+
 }

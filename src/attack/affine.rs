@@ -35,7 +35,7 @@ use crate::cipher::affine::{decipher_par, validate_key};
 ///
 /// # Returns:
 /// * Affine key found.
-fn brute_force<T, U>(ciphered_text: T, charset: U)-> Result<usize>
+pub fn brute_force<T, U>(ciphered_text: T, charset: U)-> Result<usize>
     where T: AsRef<str>,
           U: AsRef<str> {
     let mut parameters = create_parameters(ciphered_text, charset);
@@ -60,9 +60,10 @@ fn brute_force<T, U>(ciphered_text: T, charset: U)-> Result<usize>
 ///
 /// # Returns:
 /// * Affine key found.
-fn brute_force_mp<T, U>(ciphered_text: T, charset: U)-> Result<usize>
-    where T: AsRef<str>,
-          U: AsRef<str> {
+// pub fn brute_force_mp<T, U>(ciphered_text: T, charset: U)-> Result<usize>
+//     where T: AsRef<str>,
+//           U: AsRef<str> {
+pub fn brute_force_mp(ciphered_text: &str, charset: &str)-> Result<usize> {
     let mut parameters = create_parameters(ciphered_text, charset);
     simple_brute_force_mp(assess_affine_key, &mut parameters)
 }
@@ -119,7 +120,6 @@ fn create_parameters<T,U>(ciphered_text: T, charset: U) -> Parameters
 mod tests {
     use super::*;
 
-    use serial_test::serial;
     use std::time::Instant;
     use crate::attack::dictionaries::tests::LoadedDictionaries;
     use crate::cipher::affine::decipher;

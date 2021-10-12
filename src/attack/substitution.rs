@@ -156,9 +156,10 @@ fn get_keys_probabilities<T, U>(ciphered_text: &T, charset: &U, ciphered_words: 
 ///
 /// # Returns:
 /// * A tuple with substitution key found and success probability.
-pub fn hack_substitution_mp<T, U>(ciphered_text: T, charset: U) -> Result<(String, f64)>
-    where T: AsRef<str> + std::marker::Sync,
-          U: AsRef<str> + std::marker::Sync {
+// pub fn hack_substitution_mp<T, U>(ciphered_text: T, charset: U) -> Result<(String, f64)>
+//     where T: AsRef<str> + std::marker::Sync,
+//           U: AsRef<str> + std::marker::Sync {
+pub fn hack_substitution_mp(ciphered_text: &str, charset: &str) -> Result<(String, f64)> {
     let ciphered_words = get_words_from_text(&ciphered_text);
     let available_languages = Dictionary::get_dictionaries_names()
         .chain_err(|| ErrorKind::DatabaseError("We could not get dictionaries names."))?;
@@ -330,7 +331,7 @@ fn assess_substitution_key<T, U, V, W>(ciphered_text: T, key: U, language: V, ch
           U: AsRef<str>,
           V: AsRef<str>,
           W: AsRef<str> {
-    let recovered_text = decipher(&ciphered_text, &key, &charset)?;
+    let recovered_text = decipher(ciphered_text.as_ref(), key.as_ref(), charset.as_ref())?;
     let words = get_words_from_text(&recovered_text);
     let frequency = get_candidates_frequency_at_language(&words, &language);
     frequency
@@ -792,9 +793,8 @@ impl Extractor for HashSet<char> {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
-    use serial_test::serial;
     use std::env;
     use std::fs::File;
     use std::time::Instant;
@@ -805,11 +805,11 @@ mod tests {
     use std::iter::FromIterator;
 
 
-    const TEST_CHARSET: &'static str = "abcdefghijklmnopqrstuvwxyz";
-    const TEST_KEY: &'static str =     "lfwoayuisvkmnxpbdcrjtqeghz";
+    pub const TEST_CHARSET: &'static str = "abcdefghijklmnopqrstuvwxyz";
+    pub const TEST_KEY: &'static str =     "lfwoayuisvkmnxpbdcrjtqeghz";
     const TEST_CHARSET_SPANISH: &'static str = "abcdefghijklmnopqrstuvwxyzáéíóúñ";
     const TEST_KEY_SPANISH: &'static str =     "lfwoayuisvkmnxpbdcrjtqeghzñúóíéá";
-    const ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS: &'static str = "resources/english_book_c1.txt";
+    pub const ENGLISH_TEXT_WITH_PUNCTUATIONS_MARKS: &'static str = "resources/english_book_c1.txt";
     const SPANISH_TEXT_WITH_PUNCTUATIONS_MARKS: &'static str = "resources/spanish_book_c1.txt";
 
     struct TestSet {

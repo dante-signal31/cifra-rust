@@ -371,7 +371,7 @@ fn find_most_likely_subkeys<T>(substring: T, reference_histogram: &LetterHistogr
     where T: AsRef<str> {
     let mut scores: HashMap<String, u64> = HashMap::new();
     for letter in reference_histogram.charset.chars() {
-        let deciphered_text = decipher(&substring, &letter.to_string(), &reference_histogram.charset)?;
+        let deciphered_text = decipher(&substring.as_ref(), &letter.to_string(), &reference_histogram.charset)?;
         let deciphered_histogram = LetterHistogram::from_text(&deciphered_text, 6, &reference_histogram.charset);
         let score = LetterHistogram::match_score(&deciphered_histogram, &reference_histogram);
         scores.insert(letter.to_string(), u64::from(score));

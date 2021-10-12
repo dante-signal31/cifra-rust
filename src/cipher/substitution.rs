@@ -56,18 +56,19 @@ fn check_substitution_key<T, U>(key: T, charset: U) -> Result<()>
 ///
 /// # Raises:
 /// * CharacterMappingError: If there were an error mapping a char to its substitution.
-pub fn cipher<T, U, V>(text: T, key: U, charset: V) -> Result<String>
-    where T: AsRef<str>,
-          U: AsRef<str>,
-          V: AsRef<str> {
+// pub fn cipher<T, U, V>(text: T, key: U, charset: V) -> Result<String>
+//     where T: AsRef<str>,
+//           U: AsRef<str>,
+//           V: AsRef<str> {
+pub fn cipher(text: &str, key: &str, charset: &str) -> Result<String> {
     check_substitution_key(&key, &charset)?;
     let mut ciphered_message: String = String::new();
-    let key_chars: Vec<char> = key.as_ref().chars().collect();
-    for _char in text.as_ref().chars() {
-        if charset.as_ref().contains(_char.to_lowercase().to_string().as_str()) {
+    let key_chars: Vec<char> = key.chars().collect();
+    for _char in text.chars() {
+        if charset.contains(_char.to_lowercase().to_string().as_str()) {
             let lowercase_char_debug: Vec<char> = _char.to_lowercase().collect();
             let char_to_find = lowercase_char_debug[0];
-            let charset_vec: Vec<char> = charset.as_ref().chars().collect();
+            let charset_vec: Vec<char> = charset.chars().collect();
             let charset_index = match charset_vec.iter().position(|ch| ch.to_string() == char_to_find.to_string()){
                 Some(index) => index,
                 None => bail!(ErrorKind::CharacterMappingError(_char.to_lowercase().to_string()))
@@ -105,18 +106,19 @@ pub fn cipher<T, U, V>(text: T, key: U, charset: V) -> Result<String>
 ///
 /// # Raises:
 /// * CharacterMappingError: If there were an error mapping a char to its substitution.
-pub fn decipher<T, U, V>(ciphered_text: T, key: U, charset: V) -> Result<String>
-    where T: AsRef<str>,
-          U: AsRef<str>,
-          V: AsRef<str> {
+// pub fn decipher<T, U, V>(ciphered_text: T, key: U, charset: V) -> Result<String>
+//     where T: AsRef<str>,
+//           U: AsRef<str>,
+//           V: AsRef<str> {
+pub fn decipher(ciphered_text: &str, key: &str, charset: &str) -> Result<String>{
     check_substitution_key(&key, &charset)?;
     let mut deciphered_message = String::new();
-    let charset_chars: Vec<char> = charset.as_ref().chars().collect();
-    let key_vec: Vec<char> = key.as_ref().chars().collect();
-    for ciphered_char in ciphered_text.as_ref().chars() {
+    let charset_chars: Vec<char> = charset.chars().collect();
+    let key_vec: Vec<char> = key.chars().collect();
+    for ciphered_char in ciphered_text.chars() {
         let lowercase_char_debug: Vec<char> = ciphered_char.to_lowercase().collect();
         let char_to_find = lowercase_char_debug[0];
-        if key.as_ref().contains(ciphered_char.to_lowercase().to_string().as_str()) {
+        if key.contains(ciphered_char.to_lowercase().to_string().as_str()) {
             let key_index = match key_vec.iter().position(|ch| ch.to_string() == char_to_find.to_string()) {
                 Some(index) => index,
                 None => bail!(ErrorKind::CharacterMappingError(ciphered_char.to_lowercase().to_string()))
@@ -136,12 +138,12 @@ pub fn decipher<T, U, V>(ciphered_text: T, key: U, charset: V) -> Result<String>
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
 
-    const TEST_CHARSET: &'static str = "abcdefghijklmnopqrstuvwxyz";
-    const TEST_KEY: &'static str =     "lfwoayuisvkmnxpbdcrjtqeghz";
-    const ORIGINAL_MESSAGE: &'static str  = "If a man is offered a fact which goes against his \
+    pub const TEST_CHARSET: &'static str = "abcdefghijklmnopqrstuvwxyz";
+    pub const TEST_KEY: &'static str =     "lfwoayuisvkmnxpbdcrjtqeghz";
+    pub const ORIGINAL_MESSAGE: &'static str  = "If a man is offered a fact which goes against his \
                                     instincts, he will scrutinize it closely, and unless \
                                     the evidence is overwhelming, he will refuse to believe \
                                     it. If, on the other hand, he is offered something which \
@@ -149,7 +151,7 @@ mod tests {
                                     instincts, he will accept it even on the slightest \
                                     evidence. The origin of myths is explained in this way. \
                                     -Bertrand Russell";
-    const CIPHERED_MESSAGE: &'static str = "Sy l nlx sr pyyacao l ylwj eiswi upar lulsxrj isr \
+    pub const CIPHERED_MESSAGE: &'static str = "Sy l nlx sr pyyacao l ylwj eiswi upar lulsxrj isr \
                                     sxrjsxwjr, ia esmm rwctjsxsza sj wmpramh, lxo txmarr \
                                     jia aqsoaxwa sr pqaceiamnsxu, ia esmm caytra \
                                     jp famsaqa sj. Sy, px jia pjiac ilxo, ia sr \

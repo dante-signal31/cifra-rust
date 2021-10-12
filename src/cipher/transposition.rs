@@ -12,8 +12,9 @@ type TranspositionMatrix = Vec<Vec<Option<char>>>;
 ///
 /// # Returns:
 /// * Ciphered text.
-pub fn cipher<T>(text: T, key: usize)-> String
-    where T: AsRef<str> {
+// pub fn cipher<T>(text: T, key: usize)-> String
+//     where T: AsRef<str> {
+pub fn cipher(text: &str, key: usize)-> String {
     let ciphered_text = transpose_text(&text, key, true);
     ciphered_text
 }
@@ -26,8 +27,9 @@ pub fn cipher<T>(text: T, key: usize)-> String
 ///
 /// # Returns:
 /// * Deciphered text.
-pub fn decipher<T>(ciphered_text: T, key: usize)-> Result<String>
-    where T: AsRef<str> {
+// pub fn decipher<T>(ciphered_text: T, key: usize)-> Result<String>
+//     where T: AsRef<str> {
+pub fn decipher(ciphered_text: &str, key: usize)-> Result<String> {
     let deciphered_text = transpose_text(&ciphered_text, key, false);
     Ok(deciphered_text)
 }
@@ -48,7 +50,7 @@ pub fn decipher<T>(ciphered_text: T, key: usize)-> Result<String>
 pub fn decipher_par(parameters: &Parameters)-> Result<String> {
     let ciphered_text = parameters.get_str("ciphered_text")?;
     let key = parameters.get_int("key")?;
-    decipher(ciphered_text, key)
+    decipher(ciphered_text.as_str(), key)
 }
 
 /// Transpose given text.

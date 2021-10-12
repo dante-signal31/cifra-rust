@@ -83,10 +83,11 @@ impl Display for WrongAffineKey {
 ///
 /// # Returns:
 /// * Ciphered text.
-pub fn cipher<T, U>(text: T, key: usize, charset: U)-> Result<String>
-    where T: AsRef<str>,
-          U: AsRef<str> {
-    validate_key(key, charset.as_ref().len())?;
+// pub fn cipher<T, U>(text: T, key: usize, charset: U)-> Result<String>
+//     where T: AsRef<str>,
+//           U: AsRef<str> {
+pub fn cipher(text: &str, key: usize, charset: &str)-> Result<String> {
+    validate_key(key, charset.len())?;
     let ciphered_text = offset_text(text, key, true, &Ciphers::AFFINE, DEFAULT_CHARSET);
     ciphered_text
 }
@@ -103,10 +104,11 @@ pub fn cipher<T, U>(text: T, key: usize, charset: U)-> Result<String>
 ///
 /// # Returns:
 /// * Deciphered text.
-pub fn decipher<T, U>(ciphered_text: T, key: usize, charset: U)-> Result<String>
-    where T: AsRef<str>,
-          U: AsRef<str> {
-    validate_key(key, charset.as_ref().len())?;
+// pub fn decipher<T, U>(ciphered_text: T, key: usize, charset: U)-> Result<String>
+//     where T: AsRef<str>,
+//           U: AsRef<str> {
+pub fn decipher(ciphered_text: &str, key: usize, charset: &str)-> Result<String> {
+    validate_key(key, charset.len())?;
     let deciphered_text = offset_text(ciphered_text, key, false, &Ciphers::AFFINE, charset);
     deciphered_text
 }
@@ -131,7 +133,7 @@ pub fn decipher_par(parameters: &Parameters)-> Result<String> {
     let ciphered_text = parameters.get_str("ciphered_text")?;
     let charset = parameters.get_str("charset")?;
     let key = parameters.get_int("key")?;
-    decipher(ciphered_text, key, charset)
+    decipher(ciphered_text.as_str(), key, charset.as_str())
 }
 
 /// Get a valid random Affine key for given charset.
@@ -223,7 +225,7 @@ mod tests {
         let key = get_random_key(DEFAULT_CHARSET).unwrap();
         assert!(validate_key(key, DEFAULT_CHARSET.len()).unwrap());
         let ciphered_test_string = cipher(&test_string, key, DEFAULT_CHARSET).expect("Error getting ciphered text.");
-        let recovered_string = decipher(ciphered_test_string, key, DEFAULT_CHARSET).unwrap();
+        let recovered_string = decipher(ciphered_test_string.as_str(), key, DEFAULT_CHARSET).unwrap();
         assert_eq!(test_string, recovered_string);
     }
 }
