@@ -116,30 +116,6 @@ enum Modes {
         charset: Option<String>},
 }
 
-// impl Modes {
-//     /// True if they are the same Modes variant independently of their inner fields.
-//     pub fn same_type_as(&self, other: Modes)-> bool {
-//         match *self {
-//             Self::Dictionary(_)=> return other == Self::Dictionary(actions),
-//             Self::Cipher { .. }=> if let Self::Cipher {..} = other {
-//                 return true
-//             } else {
-//                 return false
-//             },
-//             Self::Decipher {..}=> if let Self::Decipher {..} = other {
-//                 return true
-//             } else {
-//                 return false
-//             },
-//             Self::Attack {..}=> if let Self::Attack {..} = other {
-//                 return true
-//             } else {
-//                 return false
-//             }
-//         }
-//     }
-// }
-
 /// What you can do with a dictionary.
 #[derive(Debug, PartialEq)]
 enum DictionaryActions {
@@ -787,16 +763,13 @@ fn _main(argv: Vec<&str>) {
             }
         }
         // Ciphering management.
-        //Modes::Cipher{ algorithm, key, file_to_cipher, ciphered_file, charset }
         Modes::Cipher{ .. }
-        //| Modes::Decipher { algorithm, key, file_to_decipher, deciphered_file, charset }=> {
         | Modes::Decipher { .. }=> {
             let ciphered_content = process_file_with_key(&configuration)
                 .expect("Error deciphering text.");
             output_result(&ciphered_content, &configuration)
                 .expect("Error outputting recovered text.");
         }
-        // Modes::Attack{ algorithm, file_to_attack, deciphered_file, charset }=> {
         Modes::Attack{ .. }=> {
             let recovered_content = attack_file(&configuration)
                 .expect("Error attacking ciphered text.");
