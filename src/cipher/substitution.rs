@@ -2,7 +2,7 @@
 use crate::{ErrorKind, Result, ResultExt, Error};
 use std::collections::HashSet;
 
-// const DEFAULT_CHARSET: &'static str = "abcdefghijklmnopqrstuvwxyz";
+pub const DEFAULT_CHARSET: &'static str = "abcdefghijklmnopqrstuvwxyz";
 
 /// Check used key is a valid one for substitution method with this charset.
 ///

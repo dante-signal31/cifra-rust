@@ -14,6 +14,7 @@ use strum_macros::EnumIter;
 
 use cifra::{ErrorKind, Result, ResultExt, Error};
 use cifra::cipher::common::DEFAULT_CHARSET;
+use cifra::cipher::substitution::DEFAULT_CHARSET as SUBSTITUTION_DEFAULT_CHARSET;
 use cifra::attack::dictionaries::Dictionary;
 use cifra::ErrorKind::{ConversionError, IOError};
 
@@ -231,7 +232,7 @@ impl From<ArgMatches> for Configuration {
                     } else {
                         None
                     },
-                    charset: if matches.is_present("charset") {
+                    charset: if _matches.is_present("charset") {
                         Some(String::from(_matches.value_of("charset").unwrap()))
                     } else {
                         None
@@ -458,7 +459,7 @@ fn process_file_with_key(configuration: &Configuration)-> Result<String> {
                             processed_content = process_function(&content_to_process, key, charset_string)
                                 .chain_err(|| "Error ciphering text.")?;
                         } else {
-                            processed_content = process_function(&content_to_process, key, DEFAULT_CHARSET)
+                            processed_content = process_function(&content_to_process, key, SUBSTITUTION_DEFAULT_CHARSET)
                                 .chain_err(|| "Error ciphering text.")?;
                         }
                     },
@@ -496,7 +497,7 @@ fn process_file_with_key(configuration: &Configuration)-> Result<String> {
                         processed_content = process_function(&content_to_process, key, charset_string)
                             .chain_err(|| "Error deciphering text.")?;
                     } else {
-                        processed_content = process_function(&content_to_process, key, DEFAULT_CHARSET)
+                        processed_content = process_function(&content_to_process, key, SUBSTITUTION_DEFAULT_CHARSET)
                             .chain_err(|| "Error deciphering text.")?;
                     }
                 },
@@ -533,16 +534,20 @@ where T: AsRef<str> {
             deciphered_file, charset }=> {
             output_file_option = deciphered_file;
         },
+        Modes::Attack { algorithm, file_to_attack,
+            deciphered_file, charset }=> {
+            output_file_option = deciphered_file;
+        }
         _ => {
-            println!("{}", result.as_ref());
-            return Ok(())
+            bail!("Used mode is not compatible with file output, nor should use output_result().")
         }
     }
     return if let Some(output_file_path) = output_file_option {
         write(output_file_path, result.as_ref());
         Ok(())
     } else {
-        bail!("Output file not provided")
+        println!("{}", result.as_ref());
+        return Ok(())
     }
 }
 
@@ -824,6 +829,7 @@ mod tests {
     use test_common::system::env::TemporalEnvironmentVariable;
 
     use cifra::attack::database;
+    use cifra::cipher::substitution;
 
     const CAESAR_ORIGINAL_MESSAGE: &str = "This is my secret message.";
     const CAESAR_CIPHERED_MESSAGE_KEY_13: &str = "guv6Jv6Jz!J6rp5r7Jzr66ntrM";
@@ -910,11 +916,13 @@ mod tests {
         (temp_dir, temp_env_database_path)
     }
 
-    /// Used only as a fixture for tests.
     #[fixture]
-    pub fn full_loaded_temp_dictionaries()-> LoadedDictionaries {
+    fn full_loaded_temp_dictionaries()-> LoadedDictionaries {
         LoadedDictionaries::new()
     }
+
+    #[fixture]
+    fn temp_dir()-> TestEnvironment {TestEnvironment::new()}
 
     #[test]
     fn test_parser_create_dictionary() {
@@ -1070,10 +1078,10 @@ mod tests {
     }
 
     #[rstest]
-    fn test_cipher_caesar(full_loaded_temp_dictionaries: LoadedDictionaries) {
+    fn test_cipher_caesar(temp_dir: TestEnvironment, full_loaded_temp_dictionaries: LoadedDictionaries) {
         let message_file = TestFile::new();
         write(message_file.path(), CAESAR_ORIGINAL_MESSAGE);
-        let output_file_name = full_loaded_temp_dictionaries.temp_dir.join("ciphered_message.txt");
+        let output_file_name = temp_dir.path().join("ciphered_message.txt");
         let provided_args = format!("cifra cipher caesar {} {} --ciphered_file {}",
                                     CAESAR_TEST_KEY,
                                     message_file.path().to_str().unwrap(),
@@ -1082,14 +1090,16 @@ mod tests {
         _main(provided_args_vec);
         if let Ok(recovered_content) = read_to_string(&output_file_name){
             assert_eq!(CAESAR_CIPHERED_MESSAGE_KEY_13, recovered_content)
+        } else {
+            assert!(false);
         }
     }
 
     #[rstest]
-    fn test_decipher_caesar(full_loaded_temp_dictionaries: LoadedDictionaries) {
+    fn test_decipher_caesar(temp_dir: TestEnvironment, full_loaded_temp_dictionaries: LoadedDictionaries) {
         let message_file = TestFile::new();
         write(message_file.path(), CAESAR_CIPHERED_MESSAGE_KEY_13);
-        let output_file_name = full_loaded_temp_dictionaries.temp_dir.join("deciphered_message.txt");
+        let output_file_name = temp_dir.path().join("deciphered_message.txt");
         let provided_args = format!("cifra decipher caesar {} {} --deciphered_file {}",
                                     CAESAR_TEST_KEY,
                                     message_file.path().to_str().unwrap(),
@@ -1098,6 +1108,91 @@ mod tests {
         _main(provided_args_vec);
         if let Ok(recovered_content) = read_to_string(&output_file_name){
             assert_eq!(CAESAR_ORIGINAL_MESSAGE, recovered_content)
+        } else {
+            assert!(false);
+        }
+    }
+
+    #[rstest]
+    fn test_cipher_substitution(temp_dir: TestEnvironment, full_loaded_temp_dictionaries: LoadedDictionaries){
+        let message_file = TestFile::new();
+        write(message_file.path(), SUBSTITUTION_ORIGINAL_MESSAGE);
+        let output_file_name = temp_dir.path().join("ciphered_message.txt");
+        let provided_args = format!("cifra cipher substitution {} {} --ciphered_file {} --charset {}",
+                                    SUBSTITUTION_TEST_KEY,
+                                    message_file.path().to_str().unwrap(),
+                                    output_file_name.to_str().unwrap(),
+                                    SUBSTITUTION_TEST_CHARSET);
+        let mut provided_args_vec: Vec<&str> = provided_args.split_whitespace().collect();
+        _main(provided_args_vec);
+        if let Ok(recovered_content) = read_to_string(&output_file_name){
+            assert_eq!(SUBSTITUTION_CIPHERED_MESSAGE, recovered_content)
+        } else {
+            assert!(false);
+        }
+    }
+
+    #[rstest]
+    fn test_decipher_substitution(temp_dir: TestEnvironment, full_loaded_temp_dictionaries: LoadedDictionaries){
+        let message_file = TestFile::new();
+        write(message_file.path(), SUBSTITUTION_CIPHERED_MESSAGE);
+        let output_file_name = temp_dir.path().join("deciphered_message.txt");
+        let provided_args = format!("cifra decipher substitution {} {} --deciphered_file {} --charset {}",
+                                    SUBSTITUTION_TEST_KEY,
+                                    message_file.path().to_str().unwrap(),
+                                    output_file_name.to_str().unwrap(),
+                                    SUBSTITUTION_TEST_CHARSET);
+        let mut provided_args_vec: Vec<&str> = provided_args.split_whitespace().collect();
+        _main(provided_args_vec);
+        if let Ok(recovered_content) = read_to_string(&output_file_name){
+            assert_eq!(SUBSTITUTION_ORIGINAL_MESSAGE, recovered_content)
+        } else {
+            assert!(false);
+        }
+    }
+
+    #[rstest]
+    fn test_attack_caesar(temp_dir: TestEnvironment, full_loaded_temp_dictionaries: LoadedDictionaries){
+        let message_file = TestFile::new();
+        write(message_file.path(), CAESAR_CIPHERED_MESSAGE_KEY_13);
+        let output_file_name = temp_dir.path().join("recovered_message.txt");
+        let provided_args = format!("cifra attack caesar {} --deciphered_file {}",
+                                    message_file.path().to_str().unwrap(),
+                                    output_file_name.to_str().unwrap());
+        let mut provided_args_vec: Vec<&str> = provided_args.split_whitespace().collect();
+        _main(provided_args_vec);
+        if let Ok(recovered_content) = read_to_string(&output_file_name){
+            assert_eq!(CAESAR_ORIGINAL_MESSAGE, recovered_content)
+        } else {
+            assert!(false);
+        }
+    }
+
+    #[rstest]
+    fn test_attack_substitution(temp_dir: TestEnvironment, full_loaded_temp_dictionaries: LoadedDictionaries){
+        // Prepare a ciphered text file to attack.
+        let message_file = TestFile::new();
+        let english_book = env::current_dir().unwrap()
+            .join("resources/english_book_c1.txt");
+        let original_message: String = read_to_string(english_book.as_path())
+            .expect("Error reading english book.");
+        let ciphered_text = substitution::cipher(original_message.as_str(),
+                                                 SUBSTITUTION_TEST_KEY,
+                                                 SUBSTITUTION_TEST_CHARSET).unwrap();
+        write(message_file.path(), ciphered_text);
+
+        // Perform test.
+        let output_file_name = temp_dir.path().join("recovered_message.txt");
+        let provided_args = format!("cifra attack substitution {} --deciphered_file {} --charset {}",
+                                    message_file.path().to_str().unwrap(),
+                                    output_file_name.to_str().unwrap(),
+                                    SUBSTITUTION_TEST_CHARSET);
+        let mut provided_args_vec: Vec<&str> = provided_args.split_whitespace().collect();
+        _main(provided_args_vec);
+        if let Ok(recovered_content) = read_to_string(&output_file_name){
+            assert_eq!(original_message, recovered_content)
+        } else {
+            assert!(false);
         }
     }
 
