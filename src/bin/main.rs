@@ -2,8 +2,7 @@ extern crate cifra;
 
 use std::collections::HashSet;
 use std::convert::TryFrom;
-use std::fs::{File, read, read_to_string, write};
-use std::io::Read;
+use std::fs::{read_to_string, write};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::env::args;
@@ -12,8 +11,7 @@ use clap::{Arg, App, ArgMatches};
 use error_chain::bail;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
-
-use cifra::{ErrorKind, Result, ResultExt, Error};
+use cifra::{Result, ResultExt};
 use cifra::cipher::common::DEFAULT_CHARSET;
 use cifra::cipher::substitution::DEFAULT_CHARSET as SUBSTITUTION_DEFAULT_CHARSET;
 use cifra::attack::dictionaries::Dictionary;
@@ -420,7 +418,7 @@ fn process_file_with_key(configuration: &Configuration)-> Result<String> {
         Modes::Cipher { algorithm, key, file_to_cipher,
             ciphered_file, charset } => {
                 let input_file_path = file_to_cipher;
-                let mut content_to_process = read_to_string(input_file_path)
+                let content_to_process = read_to_string(input_file_path)
                     .chain_err(|| IOError(String::from(input_file_path.to_str().unwrap())))?;
                 let processed_content: String;
                 match algorithm {
@@ -458,7 +456,7 @@ fn process_file_with_key(configuration: &Configuration)-> Result<String> {
         Modes::Decipher { algorithm, key,
             file_to_decipher , deciphered_file, charset } => {
             let input_file_path = file_to_decipher;
-            let mut content_to_process = read_to_string(input_file_path)
+            let content_to_process = read_to_string(input_file_path)
                 .chain_err(|| IOError(String::from(input_file_path.to_str().unwrap())))?;
             let processed_content: String;
             match algorithm {
@@ -801,7 +799,6 @@ mod tests {
     use rstest::*;
     use std::fs::create_dir;
     use std::env;
-    use std::path::Path;
     use super::*;
 
     use test_common::fs::tmp::{TestEnvironment, TestFile};
@@ -1103,7 +1100,7 @@ mod tests {
                                     message_file.path().to_str().unwrap(),
                                     output_file_name.to_str().unwrap(),
                                     SUBSTITUTION_TEST_CHARSET);
-        let mut provided_args_vec: Vec<&str> = provided_args.split_whitespace().collect();
+        let provided_args_vec: Vec<&str> = provided_args.split_whitespace().collect();
         _main(provided_args_vec);
         if let Ok(recovered_content) = read_to_string(&output_file_name){
             assert_eq!(SUBSTITUTION_CIPHERED_MESSAGE, recovered_content)
@@ -1122,7 +1119,7 @@ mod tests {
                                     message_file.path().to_str().unwrap(),
                                     output_file_name.to_str().unwrap(),
                                     SUBSTITUTION_TEST_CHARSET);
-        let mut provided_args_vec: Vec<&str> = provided_args.split_whitespace().collect();
+        let provided_args_vec: Vec<&str> = provided_args.split_whitespace().collect();
         _main(provided_args_vec);
         if let Ok(recovered_content) = read_to_string(&output_file_name){
             assert_eq!(SUBSTITUTION_ORIGINAL_MESSAGE, recovered_content)
@@ -1139,7 +1136,7 @@ mod tests {
         let provided_args = format!("cifra attack caesar {} --deciphered_file {}",
                                     message_file.path().to_str().unwrap(),
                                     output_file_name.to_str().unwrap());
-        let mut provided_args_vec: Vec<&str> = provided_args.split_whitespace().collect();
+        let provided_args_vec: Vec<&str> = provided_args.split_whitespace().collect();
         _main(provided_args_vec);
         if let Ok(recovered_content) = read_to_string(&output_file_name){
             assert_eq!(CAESAR_ORIGINAL_MESSAGE, recovered_content)
@@ -1167,7 +1164,7 @@ mod tests {
                                     message_file.path().to_str().unwrap(),
                                     output_file_name.to_str().unwrap(),
                                     SUBSTITUTION_TEST_CHARSET);
-        let mut provided_args_vec: Vec<&str> = provided_args.split_whitespace().collect();
+        let provided_args_vec: Vec<&str> = provided_args.split_whitespace().collect();
         _main(provided_args_vec);
         if let Ok(recovered_content) = read_to_string(&output_file_name){
             assert_eq!(original_message, recovered_content)
