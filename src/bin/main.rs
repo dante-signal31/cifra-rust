@@ -7,6 +7,7 @@ use std::io::Read;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::env::args;
+use std::fmt::{Display, Formatter};
 use clap::{Arg, App, ArgMatches};
 use error_chain::bail;
 use strum::IntoEnumIterator;
@@ -74,6 +75,12 @@ impl CipheringAlgorithms {
     /// Get current value as an string.
     pub fn get_string_value(&self)-> String {
         format!("{:?}", self)
+    }
+}
+
+impl Display for CipheringAlgorithms{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 
