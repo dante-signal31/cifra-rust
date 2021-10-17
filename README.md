@@ -7,137 +7,130 @@
 [![GitHub commit activity](https://img.shields.io/github/commit-activity/y/dante-signal31/cifra-rust)](https://github.com/dante-signal31/cifra-rust/commits/master)
 [![GitHub last commit](https://img.shields.io/github/last-commit/dante-signal31/cifra-rust)](https://github.com/dante-signal31/cifra-rust/commits/master)
 
-# SYNOPSIS
-
+# NAME
 **cifra** — Library and console command to crypt and decrypt texts using classic methods.
 
+# SYNOPSIS
+|    `$ cifra MODE [-h | --help ]`
+
 # DESCRIPTION
-**cifra** is a console command and a rust library to cipher and decipher texts
+**cifra** is a console command and a python library to cipher and decipher texts
 using classic methods. It also performs cryptoattacks against those methods.
 
 I've implemented this while I read Al Sweigart's *"Cracking Codes with Python"*. While doing
-it I also developed and alternative [Python implementation](https://github.com/dante-signal31/cifra) 
-to assess implementations differences between Python and Rust. Structure of both implementations is almost 
-identical, so it is interesting to compare side-to-side functions of both implementation to realize how the 
-same things must be expressed in Python and Rust. 
+it I also developed and alternative [Python implementation](https://github.com/dante-signal31/cifra)
+to assess implementations differences between Python and Rust. Structure of both implementations is almost
+identical, so it is interesting to compare side-to-side functions of both implementation to realize how the
+same things must be expressed in Python and Rust.
 
-Some conclusions are evident: Python is extremely expressive and can implement in just few lines what Rust 
-requires many more; on the other hand Rust is extremely performant and can execute the same calculations 
-many times quicker than Python. However, I've found out a really useful conclusion: Python is a great 
-prototyping language for Rust, reflexion topics apart the vast majority of everything else that you can do 
-in Python can be easily implemented in Rust too. 
+Some conclusions are evident: Python is extremely expressive and can implement in just few lines what Rust
+requires many more; on the other hand Rust is extremely performant and can execute the same calculations
+many times quicker than Python. However, I've found out a really useful conclusion: Python is a great
+prototyping language for Rust, reflexion topics apart the vast majority of everything else that you can do
+in Python can be easily implemented in Rust too.
 
-
-# USAGE
-
-`$ cifra MODE [-h | --help ]`
+Be aware that cryptographics operations are inherently slow. Cifra does not return any visual feedback until
+it has finished its work, so if you run a command and it keeps waiting for many seconds don't think it is stuck
+and finish execution, chances are that command is simply doing its calculations silently. Be patient and
+eventualy command will return its result.
 
 # MODES
 
 ## Dictionary
 Manage dictionaries to perform crypto attacks.
 
-`$ cifra dictionary ACTION`
+|    `$ cifra dictionary ACTION`
 
-### Possible actions:
+**Possible actions:**
 
-#### create
-Create a dictionary of unique words.
+* *create*: Create a dictionary of unique words.
 
-    $ cifra dictionary create NEW_DICTIONARY_NAME
+  |        `$ cifra dictionary create NEW_DICTIONARY_NAME`
 
-##### positional arguments:
-    NEW_DICTIONARY_NAME   Name for the dictionary to create.
+    + positional arguments:
+        - NEW_DICTIONARY_NAME:    Name for the dictionary to create.
+    + optional arguments:
+        - -i PATH_TO FILE_WITH_WORDS | --initial_words_file PATH_TO FILE_WITH_WORDS:
+          Optionally you can load in the dictionary words located in a file.
+          File can be a regular text file, like a book. Redundant words are
+          ignored by ingestion process.
 
-##### optional arguments:
-    -i PATH_TO FILE_WITH_WORDS | --initial_words_file PATH_TO FILE_WITH_WORDS
-                        Optionally you can load in the dictionary words
-                        located in a file. File can be a regular text file, like 
-                        a book. Redundant words are ignored by ingestion process.
+* *delete*: Remove an existing dictionary.
 
-#### delete
-Remove an existing dictionary.
+  |        `$ cifra dictionary delete DICTIONARY_NAME_TO_DELETE`
 
-    $ cifra dictionary delete DICTIONARY_NAME_TO_DELETE
+    + positional arguments:
+        - DICTIONARY_NAME_TO_DELETE:  Name for the dictionary to delete.
 
-##### positional arguments:
-    DICTIONARY_NAME_TO_DELETE  Name for the dictionary to delete.
+* *update*: Add words to an existing dictionary.
 
-#### update
-Add words to an existing dictionary.
+  |        `$ cifra dictionary update DICTIONARY_NAME_TO_UPDATE PATH_TO_FILE_WITH_WORDS`
 
-    $ cifra dictionary update DICTIONARY_NAME_TO_UPDATE PATH_TO_FILE_WITH_WORDS
+    + positional arguments:
+        - DICTIONARY_NAME_TO_UPDATE: Name for the dictionary to update with additional words.
+        - PATH_TO_FILE_WITH_WORDS:  Pathname to a file with words to add to dictionary. File can be a regular text file, like
+          a book. Redundant words are ignored by ingestion process.
 
-##### positional arguments:
-    DICTIONARY_NAME_TO_UPDATE  Name for the dictionary to update with additional words.
-    
-    PATH_TO_FILE_WITH_WORDS  Pathname to a file with words to add to dictionary. File can be a regular text file, like 
-                        a book. Redundant words are ignored by ingestion process.
+* *list*: Show existing dictionaries.
 
-
-#### list
-Show existing dictionaries.
-
-    $ cifra dictionary list
+  |        `$ cifra dictionary list`
 
 ## Cipher
 Cipher a text using a key.
 
-`$ cifra cipher ALGORITHM_NAME CIPHERING_KEY FILE_TO_CIPHER`
+|    `$ cifra cipher ALGORITHM_NAME CIPHERING_KEY FILE_TO_CIPHER`
 
-##### positional arguments:
-    ALGORITHM_NAME        Algorithm to use to cipher.
-    CIPHERING_KEY         Key to use to cipher.
-    FILE_TO_CIPHER        Path to file with text to cipher.
+* positional arguments:
+    + ALGORITHM_NAME: Algorithm to use to cipher.
+    + CIPHERING_KEY: Key to use to cipher.
+    + FILE_TO_CIPHER: Path to file with text to cipher.
 
-##### optional arguments:
-     -o OUTPUT_CIPHERED_FILE, --ciphered_file OUTPUT_CIPHERED_FILE
-                        Path to output file to place ciphered text. If not
-                        used then ciphered text will be dumped to console.
-     -c CHARSET, --charset CHARSET
-                        Default charset is: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefgh
-                        ijklmnopqrstuvwxyz1234567890 !?., but you can set here
-                        another.
-
+* optional arguments:
+    + -o OUTPUT_CIPHERED_FILE, --ciphered_file OUTPUT_CIPHERED_FILE:                        Path to output file to place ciphered text. If not
+      used then ciphered text will be dumped to console.
+    + -c CHARSET, --charset CHARSET:
+      Default charset is ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefgh
+      ijklmnopqrstuvwxyz1234567890 !?., but you can set here
+      another.
 
 ## Decipher
 Decipher a text using a key.
 
-`$ cifra decipher ALGORITHM_NAME CIPHERING_KEY FILE_TO_DECIPHER`
+|    `$ cifra decipher ALGORITHM_NAME CIPHERING_KEY FILE_TO_DECIPHER`
 
-##### positional arguments:
-    ALGORITHM_NAME        Algorithm to use to cipher.
-    CIPHERING_KEY         Key to use to cipher.
-    FILE_TO_CIPHER        Path to file with text to cipher.
+* positional arguments:
+    + ALGORITHM_NAME: Algorithm to use to cipher.
+    + CIPHERING_KEY: Key to use to cipher.
+    + FILE_TO_CIPHER: Path to file with text to cipher.
 
-##### optional arguments:
-     -o OUTPUT_CIPHERED_FILE, --ciphered_file OUTPUT_CIPHERED_FILE
-                        Path to output file to place ciphered text. If not
-                        used then deciphered text will be dumped to console.
-     -c CHARSET, --charset CHARSET
-                        Default charset is: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefgh
-                        ijklmnopqrstuvwxyz1234567890 !?., but you can set here
-                        another.
+* optional arguments:
+    + -o OUTPUT_CIPHERED_FILE, --ciphered_file OUTPUT_CIPHERED_FILE:
+      Path to output file to place ciphered text. If not
+      used then deciphered text will be dumped to console.
+    + -c CHARSET, --charset CHARSET:
+      Default charset is: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefgh
+      ijklmnopqrstuvwxyz1234567890 !?., but you can set here
+      another.
 
 ## Attack
 Attack a ciphered text to get its plain text.
 
-`$ cifra attack ALGORITHM_NAME FILE_TO_ATTACK`
+|    `$ cifra attack ALGORITHM_NAME FILE_TO_ATTACK`
 
-##### positional arguments:
-    ALGORITHM_NAME        Algorithm to attack.
-    FILE_TO_ATTACK        Path to file with text to attack.
+* positional arguments:
+    + ALGORITHM_NAME: Algorithm to attack.
+    + FILE_TO_ATTACK: Path to file with text to attack.
 
-##### optional arguments:
-     -o OUTPUT_CIPHERED_FILE, --ciphered_file OUTPUT_CIPHERED_FILE
-                        Path to output file to place deciphered text. If not
-                        used then deciphered text will be dumped to console.
-     -c CHARSET, --charset CHARSET
-                        Default charset is: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefgh
-                        ijklmnopqrstuvwxyz1234567890 !?., but you can set here
-                        another.
+* optional arguments:
+    + -o OUTPUT_CIPHERED_FILE, --ciphered_file OUTPUT_CIPHERED_FILE:
+      Path to output file to place deciphered text. If not
+      used then deciphered text will be dumped to console.
+    + -c CHARSET, --charset CHARSET:
+      Default charset is: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefgh
+      ijklmnopqrstuvwxyz1234567890 !?., but you can set here
+      another.
 
-# MODES
+# ALGORITHMS
 Currently these algorithms are available:
 
 * caesar
