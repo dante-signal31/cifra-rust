@@ -84,7 +84,7 @@ impl Database {
         let database_url = env::var("DATABASE_URL")
             .chain_err(|| ErrorKind::DatabaseError("DATABASE_URL must be set"))?;
         SqliteConnection::establish(&database_url)
-            .chain_err(|| ErrorKind::DatabaseError("Error connecting to DATABASE_URL"))
+            .chain_err(|| ErrorKind::DatabaseError(format!("Error connecting to DATABASE_URL: {}", database_url).as_str()))
     }
 }
 

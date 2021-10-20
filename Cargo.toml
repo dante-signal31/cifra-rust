@@ -1,10 +1,13 @@
 [package]
-name = "cifra-rust"
-version = "0.1.0"
+name = "cifra"
+version = "0.9.0"
 authors = ["dante-signal31 <dante.signal31@gmail.com>"]
 edition = "2018"
 description = "Console command to crypt and decrypt texts using classic methods. It also performs crypto attacks against those methods."
 homepage = "https://github.com/dante-signal31/cifra"
+license = "BSD-3-Clause"
+keywords = ["cipher", "caesar", "crypto"]
+categories = ["command-line-utilities", "cryptography"]
 
 [lib]
 name="cifra"
@@ -29,8 +32,16 @@ clap = "3.0.0-beta.4"
 strum = "0.21.0"
 strum_macros = "0.21.1"
 
-
 [dev-dependencies]
 test_common = "1.4.0"
 rstest = "0.6.4"
 float-cmp = "0.8.0"
+
+[package.metadata.deb]
+conflicts = "cifra"
+section = "utils"
+priority = "optional"
+assets = [
+    ["target/release/cifra", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/cifra/", "644"],
+    ["man/cifra.1.gz", "usr/share/man/man1/", "644"],]
