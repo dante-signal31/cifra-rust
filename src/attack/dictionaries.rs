@@ -49,7 +49,7 @@ impl Dictionary {
         let database = Database::new()?;
         diesel::delete(languages::table.filter(language.eq(_language.as_ref())))
             .execute(&database.session)
-            .chain_err(|| ErrorKind::DatabaseError("Error deleting language."))?;
+            .chain_err(|| ErrorKind::DatabaseError(String::from("Error deleting language.")))?;
         Ok(())
     }
 
@@ -61,7 +61,7 @@ impl Dictionary {
         let database = Database::new()?;
         let dictionaries_names = languages::table.select(languages::language)
             .load::<String>(&database.session)
-            .chain_err(|| ErrorKind::DatabaseError("Language list could not be retrieved."))?;
+            .chain_err(|| ErrorKind::DatabaseError(String::from("Language list could not be retrieved.")))?;
         Ok(dictionaries_names)
     }
 
@@ -454,7 +454,7 @@ fn get_candidates_frecuency(_words: &HashSet<String>)-> Result<HashMap<String, f
     let mut candidates: HashMap<String, f64> = HashMap::new();
     for _language in Dictionary::get_dictionaries_names()? {
         let dictionary = Dictionary::new(&_language, false)
-            .chain_err(|| ErrorKind::DatabaseError("Error opening language dictionary"))?;
+            .chain_err(|| ErrorKind::DatabaseError(String::from("Error opening language dictionary")))?;
         let current_hits: u64 = _words.iter().map(|_word| if dictionary.word_exists(_word) {1} else {0}).sum();
         let frequency = current_hits as f64 / total_words as f64;
         candidates.insert(_language, frequency);

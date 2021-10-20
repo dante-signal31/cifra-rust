@@ -33,7 +33,7 @@ const DATABASE_STANDARD_PATH: &'static str = "~/.cifra/cifra_database.sqlite";
 fn check_database_url_env_var_exists()-> Result<String>{
     return env::var(DATABASE_ENV_VAR)
         .chain_err (|| {
-            ErrorKind::DatabaseError("Error finding out if database env var existed previously.")
+            ErrorKind::DatabaseError(String::from("Error finding out if database env var existed previously."))
         })
 }
 
@@ -41,7 +41,7 @@ fn check_database_url_env_var_exists()-> Result<String>{
 pub fn create_database()-> Result<Database> {
     let database = Database::new()?;
     embedded_migrations::run(&database.session)
-        .chain_err(|| ErrorKind::DatabaseError("Error running database migrations."))?;
+        .chain_err(|| ErrorKind::DatabaseError(String::from("Error running database migrations.")))?;
     Ok(database)
 }
 
@@ -82,9 +82,9 @@ impl Database {
     fn open_session() -> Result<DatabaseSession> {
         dotenv().ok();
         let database_url = env::var("DATABASE_URL")
-            .chain_err(|| ErrorKind::DatabaseError("DATABASE_URL must be set"))?;
+            .chain_err(|| ErrorKind::DatabaseError(String::from("DATABASE_URL must be set")))?;
         SqliteConnection::establish(&database_url)
-            .chain_err(|| ErrorKind::DatabaseError(format!("Error connecting to DATABASE_URL: {}", database_url).as_str()))
+            .chain_err(|| ErrorKind::DatabaseError(format!("Error connecting to DATABASE_URL: {}", database_url)))
     }
 }
 

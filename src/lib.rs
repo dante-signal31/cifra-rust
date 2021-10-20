@@ -28,7 +28,7 @@ error_chain! {
                 description("Conversion failed.")
                 display("{} type variable '{}' could not converted to {}", var_type, var, tried_type)
             }
-            DatabaseError(message: &'static str) {
+            DatabaseError(message: String) {
                 description("Database error")
                 display("{}", message)
             }

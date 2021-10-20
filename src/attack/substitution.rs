@@ -110,7 +110,7 @@ pub fn hack_substitution<T, U>(ciphered_text: T, charset: U) -> Result<(String, 
           U: AsRef<str> {
     let ciphered_words = get_words_from_text(&ciphered_text);
     let available_languages = Dictionary::get_dictionaries_names()
-        .chain_err(|| ErrorKind::DatabaseError("We could not get dictionaries names."))?;
+        .chain_err(|| ErrorKind::DatabaseError(String::from("We could not get dictionaries names.")))?;
     let mut keys_found: HashMap<String, f64> = HashMap::new();
     for language in available_languages {
         let language_probabilities = get_keys_probabilities(&ciphered_text, &charset, &ciphered_words, &language)?;
@@ -162,7 +162,7 @@ fn get_keys_probabilities<T, U>(ciphered_text: &T, charset: &U, ciphered_words: 
 pub fn hack_substitution_mp(ciphered_text: &str, charset: &str) -> Result<(String, f64)> {
     let ciphered_words = get_words_from_text(&ciphered_text);
     let available_languages = Dictionary::get_dictionaries_names()
-        .chain_err(|| ErrorKind::DatabaseError("We could not get dictionaries names."))?;
+        .chain_err(|| ErrorKind::DatabaseError(String::from("We could not get dictionaries names.")))?;
     let mut keys_found: HashMap<String, f64> = HashMap::new();
     let languages_probabilities: Vec<Result<HashMap<String, f64>>> = available_languages.par_iter().map(|language| get_keys_probabilities(&ciphered_text, &charset, &ciphered_words, &language)).collect();
     for language_probability in languages_probabilities {
