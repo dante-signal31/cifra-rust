@@ -33,7 +33,6 @@ const DATABASE_STANDARD_PATH: &'static str = "~/.cifra/cifra_database.sqlite";
 fn check_database_url_env_var_exists()-> Result<String>{
     return env::var(DATABASE_ENV_VAR)
         .chain_err (|| {
-            env::set_var(DATABASE_ENV_VAR, DATABASE_STANDARD_PATH);
             ErrorKind::DatabaseError("Error finding out if database env var existed previously.")
         })
 }
@@ -53,13 +52,27 @@ pub struct Database {
 
 impl Database {
 
+    /// Create a new Database type.
+    ///
+    /// At creation it checksif DATABASE_URL environment variable actually exists and create it if not.
+    ///
+    /// At tests a .env file is used to shadow default DATABASE_URL var. But at production
+    /// that environment variable must be set to let cifra find its database. If this
+    /// function does not find DATABASE_URL then it creates that var and populates it
+    /// with default value stored at *DATABASE_STANDARD_PATH*
     pub fn new() -> Result<Self> {
-        let database_path = check_database_url_env_var_exists()
-            .chain_err(|| ErrorKind::DatabaseError("Error checking if DATABASE_URL environment variable exists."))?;
-        Ok(Database {
-           session: Self::open_session()?,
-           database_path
-        })
+        if let Ok(database_path) = check_database_url_env_var_exists() {
+            Ok(Database {
+                session: Self::open_session()?,
+                database_path
+            })
+        } else {
+            env::set_var(DATABASE_ENV_VAR, DATABASE_STANDARD_PATH);
+            Ok(Database {
+                session: Self::open_session()?,
+                database_path: String::from(DATABASE_STANDARD_PATH)
+            })
+        }
     }
 
     /// Connect to current dictionaries database.
