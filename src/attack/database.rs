@@ -3,17 +3,18 @@ use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use dotenv::dotenv;
 use std::env;
+use std::fs;
+use std::path::{Path, PathBuf};
 // use std::env::VarError;
 
+use crate::{ErrorKind, Result, ResultExt, Error};
 use crate::schema::languages;
 // use crate::schema::languages::dsl::*;
 use crate::schema::words;
 // use crate::schema::words::dsl::*;
-
-use crate::{ErrorKind, Result, ResultExt};
 // use std::fmt::Error;
 
-embed_migrations!();
+embed_migrations!("migrations/");
 
 pub type DatabaseSession = SqliteConnection;
 
@@ -45,6 +46,16 @@ pub fn create_database()-> Result<Database> {
     Ok(database)
 }
 
+/// Take a path and create all folders that don't actually exists yet.
+fn create_folder_path(path: &Path) -> Result<()>{
+    if let Ok(()) = fs::create_dir_all(path) {
+        Ok(())
+    } else {
+        let path_string = path.as_os_str();
+        bail!(String::from(path_string.to_str().unwrap()))
+    }
+}
+
 pub struct Database {
     pub session: DatabaseSession,
     database_path: String
@@ -54,24 +65,31 @@ impl Database {
 
     /// Create a new Database type.
     ///
-    /// At creation it checksif DATABASE_URL environment variable actually exists and create it if not.
+    /// At creation it checks if DATABASE_URL environment variable actually exists and
+    /// create it if not.
     ///
     /// At tests a .env file is used to shadow default DATABASE_URL var. But at production
     /// that environment variable must be set to let cifra find its database. If this
     /// function does not find DATABASE_URL then it creates that var and populates it
     /// with default value stored at *DATABASE_STANDARD_PATH*
+    ///
+    /// If DATABASE_URL was not set that is a signal about database does not exist yet so
+    /// its created too.
     pub fn new() -> Result<Self> {
         if let Ok(database_path) = check_database_url_env_var_exists() {
+            // Database already exists.
             Ok(Database {
                 session: Self::open_session()?,
                 database_path
             })
         } else {
+            // Database does not exists yet. So we must create it.
             env::set_var(DATABASE_ENV_VAR, DATABASE_STANDARD_PATH);
-            Ok(Database {
-                session: Self::open_session()?,
-                database_path: String::from(DATABASE_STANDARD_PATH)
-            })
+            let database_path = PathBuf::from(DATABASE_STANDARD_PATH);
+            let database_folder = database_path.parent()
+                .chain_err(|| ErrorKind::FolderError(String::from(database_path.as_os_str().to_str().unwrap())))?;
+            create_folder_path(database_folder);
+            create_database()
         }
     }
 
@@ -146,6 +164,16 @@ mod tests {
         create_database();
         // Database now exists.
         assert!(database_path.exists());
+    }
+
+    #[test]
+    fn test_create_database_path() {
+        let test_folder = TestEnvironment::new();
+        let absolute_path_to_database = test_folder.path().join(".cifra/parent1/parent2/cifra_database.sqlite");
+        let database_folder = absolute_path_to_database.parent().unwrap();
+        assert!(!database_folder.exists());
+        create_folder_path(database_folder);
+        assert!(database_folder.exists());
     }
 
 

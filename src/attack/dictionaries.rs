@@ -786,7 +786,7 @@ nahm.";
     }
 
 
-    /// Creates a temporary folder and set that folder at database home.
+    /// Creates a temporary folder and set that folder as database home.
     ///
     /// # Returns:
     /// You may not use then, but keep them in scope or temp folder will be removed

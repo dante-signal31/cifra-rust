@@ -11,11 +11,12 @@ use clap::{Arg, App, ArgMatches};
 use error_chain::bail;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
-use cifra::{Result, ResultExt};
+use cifra::{ErrorKind, Result, ResultExt};
 use cifra::cipher::common::DEFAULT_CHARSET;
 use cifra::cipher::substitution::DEFAULT_CHARSET as SUBSTITUTION_DEFAULT_CHARSET;
 use cifra::attack::dictionaries::Dictionary;
-use cifra::ErrorKind::{ConversionError, IOError};
+
+
 
 /// Get an string containing current app version.
 ///
@@ -23,10 +24,10 @@ use cifra::ErrorKind::{ConversionError, IOError};
 /// * This app's current version.
 fn get_version()-> String {
     format!("{}.{}.{}{}",
-    env!("CARGO_PKG_VERSION_MAJOR"),
-    env!("CARGO_PKG_VERSION_MINOR"),
-    env!("CARGO_PKG_VERSION_PATCH"),
-    option_env!("CARGO_PKG_VERSION_PRE").unwrap_or(""))
+        env!("CARGO_PKG_VERSION_MAJOR"),
+        env!("CARGO_PKG_VERSION_MINOR"),
+        env!("CARGO_PKG_VERSION_PATCH"),
+        option_env!("CARGO_PKG_VERSION_PRE").unwrap_or(""))
 }
 
 /// Ciphering algorithms cifra-rust understand about.
@@ -118,7 +119,7 @@ enum Modes {
     Decipher{algorithm: CipheringAlgorithms, key: String, file_to_decipher: PathBuf, deciphered_file: Option<PathBuf>,
         charset: Option<String>},
     Attack{algorithm: CipheringAlgorithms, file_to_attack: PathBuf, deciphered_file: Option<PathBuf>,
-        charset: Option<String>},
+        output_recovered_key: bool, charset: Option<String>},
 }
 
 /// What you can do with a dictionary.
@@ -231,6 +232,7 @@ impl From<ArgMatches> for Configuration {
                     } else {
                         None
                     },
+                    output_recovered_key: _matches.is_present("output_recovered_key"),
                     charset: if _matches.is_present("charset") {
                         Some(String::from(_matches.value_of("charset").unwrap()))
                     } else {
@@ -395,6 +397,10 @@ fn parse_arguments(arg_vec: &Vec<&str>) -> Configuration {
                 .value_name("OUTPUT_DECIPHERED_FILE")
                 .takes_value(true)
                 .about("Path to output file to place deciphered text. If not used then deciphered text will be dumped to console."))
+            .arg(Arg::new("output_recovered_key")
+                .short('k')
+                .long("output_recovered_key")
+                .about("Include guessed key in output. If not used only recovered text is output."))
             .arg(Arg::new("charset")
                 .short('c')
                 .long("charset")
@@ -419,13 +425,13 @@ fn process_file_with_key(configuration: &Configuration)-> Result<String> {
             ciphered_file, charset } => {
                 let input_file_path = file_to_cipher;
                 let content_to_process = read_to_string(input_file_path)
-                    .chain_err(|| IOError(String::from(input_file_path.to_str().unwrap())))?;
+                    .chain_err(|| ErrorKind::IOError(String::from(input_file_path.to_str().unwrap())))?;
                 let processed_content: String;
                 match algorithm {
                     CipheringAlgorithms::Caesar | CipheringAlgorithms::Affine=> {
                         let process_function: fn(&str, usize, &str)-> Result<String> = get_integer_key_and_charset_ciphering_function(algorithm)?;
                         let process_key = usize::from_str(key.as_str())
-                            .chain_err(|| ConversionError("key", "&String", "usize"))?;
+                            .chain_err(|| ErrorKind::ConversionError("key", "&String", "usize"))?;
                         if let Some(charset_string) = charset {
                             processed_content = process_function(&content_to_process, process_key, charset_string)
                                 .chain_err(|| "Error ciphering text.")?;
@@ -447,7 +453,7 @@ fn process_file_with_key(configuration: &Configuration)-> Result<String> {
                     CipheringAlgorithms::Transposition=> {
                         let process_function: fn(&str, usize)-> String = get_integer_key_ciphering_function(algorithm)?;
                         let process_key = usize::from_str(key.as_str())
-                            .chain_err(|| ConversionError("key", "&String", "usize"))?;
+                            .chain_err(|| ErrorKind::ConversionError("key", "&String", "usize"))?;
                         processed_content = process_function(&content_to_process, process_key);
                     }
                 }
@@ -457,13 +463,13 @@ fn process_file_with_key(configuration: &Configuration)-> Result<String> {
             file_to_decipher , deciphered_file, charset } => {
             let input_file_path = file_to_decipher;
             let content_to_process = read_to_string(input_file_path)
-                .chain_err(|| IOError(String::from(input_file_path.to_str().unwrap())))?;
+                .chain_err(|| ErrorKind::IOError(String::from(input_file_path.to_str().unwrap())))?;
             let processed_content: String;
             match algorithm {
                 CipheringAlgorithms::Caesar | CipheringAlgorithms::Affine=> {
                     let process_function: fn(&str, usize, &str)-> Result<String> = get_integer_key_and_charset_deciphering_function(algorithm)?;
                     let process_key = usize::from_str(key.as_str())
-                        .chain_err(|| ConversionError("key", "&String", "usize"))?;
+                        .chain_err(|| ErrorKind::ConversionError("key", "&String", "usize"))?;
                     if let Some(charset_string) = charset {
                         processed_content = process_function(&content_to_process, process_key, charset_string)
                             .chain_err(|| "Error deciphering text.")?;
@@ -485,7 +491,7 @@ fn process_file_with_key(configuration: &Configuration)-> Result<String> {
                 CipheringAlgorithms::Transposition=> {
                     let process_function: fn(&str, usize)-> Result<String> = get_integer_key_deciphering_function(algorithm)?;
                     let process_key = usize::from_str(key.as_str())
-                        .chain_err(|| ConversionError("key", "&String", "usize"))?;
+                        .chain_err(|| ErrorKind::ConversionError("key", "&String", "usize"))?;
                     processed_content = process_function(&content_to_process, process_key)
                         .chain_err(|| "Error deciphering text.")?;
                 }
@@ -502,10 +508,12 @@ fn process_file_with_key(configuration: &Configuration)-> Result<String> {
 /// # Parameters:
 /// * result: String with resulting processed content. If an output file has been requested then
 /// result is written to that file or to screen otherwise.
+/// * key: Key used to get result.
 /// * configuration: Cifra running configurations.
-fn output_result<T>(result: T, configuration: &Configuration)-> Result<()>
-where T: AsRef<str> {
+fn output_result<T>(result: T, recovered_key: Option<String>, configuration: &Configuration)-> Result<()>
+where T: AsRef<str>{
     let output_file_option: &Option<PathBuf>;
+    let mut output_guessed_key = false;
     match &configuration.running_mode {
         Modes::Cipher { algorithm, key, file_to_cipher,
             ciphered_file, charset } => {
@@ -516,18 +524,26 @@ where T: AsRef<str> {
             output_file_option = deciphered_file;
         },
         Modes::Attack { algorithm, file_to_attack,
-            deciphered_file, charset }=> {
+            deciphered_file, charset, output_recovered_key
+        }=> {
             output_file_option = deciphered_file;
+            output_guessed_key = *output_recovered_key;
         }
         _ => {
             bail!("Used mode is not compatible with file output, nor should use output_result().")
         }
     }
+    let output_string = match output_guessed_key {
+        true=> format!("{{\n  \"guessed_key\":\"{}\"\n  \"recovered_text\":\"{}\"\n}}",
+                       recovered_key.unwrap(),
+                       result.as_ref()),
+        false=> format!("{}", result.as_ref())
+    };
     return if let Some(output_file_path) = output_file_option {
-        write(output_file_path, result.as_ref());
+        write(output_file_path, output_string.as_str());
         Ok(())
     } else {
-        println!("{}", result.as_ref());
+        println!("{}", output_string.as_str());
         return Ok(())
     }
 }
@@ -538,10 +554,11 @@ where T: AsRef<str> {
 /// * configuration: Cifra running configuration.
 ///
 /// # Returns:
-/// * Most likely original plain text.
-fn attack_file(configuration: &Configuration)-> Result<String> {
+/// * Most likely original plain text and most likely key string.
+fn attack_file(configuration: &Configuration)-> Result<(String, String)> {
     if let Modes::Attack { algorithm, file_to_attack,
-        deciphered_file, charset } = &configuration.running_mode {
+        deciphered_file, output_recovered_key, charset
+    } = &configuration.running_mode {
         let ciphered_content = read_to_string(file_to_attack)
             .expect("Error reading file to attack.");
         match algorithm {
@@ -560,7 +577,7 @@ fn attack_file(configuration: &Configuration)-> Result<String> {
                     deciphered_file: deciphered_file.clone(),
                     charset: charset.clone()
                 }));
-                return deciphered_text
+                return Ok((deciphered_text?, key.to_string()))
             },
             CipheringAlgorithms::Substitution => {
                 let attack_function: fn(&str, &str)-> Result<(String, f64)> = get_string_key_and_charset_attack_function(algorithm)
@@ -577,7 +594,7 @@ fn attack_file(configuration: &Configuration)-> Result<String> {
                     deciphered_file: deciphered_file.clone(),
                     charset: charset.clone()
                 }));
-                return deciphered_text
+                return Ok((deciphered_text?, key))
             },
             CipheringAlgorithms::Transposition => {
                 let attack_function: fn(&str)-> Result<usize> = get_no_charset_attack_function(algorithm)
@@ -590,7 +607,7 @@ fn attack_file(configuration: &Configuration)-> Result<String> {
                     deciphered_file: deciphered_file.clone(),
                     charset: charset.clone()
                 }));
-                return deciphered_text
+                return Ok((deciphered_text?, key.to_string()))
             },
             CipheringAlgorithms::Vigenere => {
                 let attack_function: fn(&str, &str, bool)-> Result<String> = get_testing_mode_attack_function(algorithm)
@@ -607,7 +624,7 @@ fn attack_file(configuration: &Configuration)-> Result<String> {
                     deciphered_file: deciphered_file.clone(),
                     charset: charset.clone()
                 }));
-                return deciphered_text
+                return Ok((deciphered_text?, key))
             },
         }
     } else {
@@ -772,14 +789,16 @@ fn _main(argv: Vec<&str>) {
         | Modes::Decipher { .. }=> {
             let ciphered_content = process_file_with_key(&configuration)
                 .expect("Error deciphering text.");
-            output_result(&ciphered_content, &configuration)
+            output_result(&ciphered_content, None, &configuration)
                 .expect("Error outputting recovered text.");
         }
         Modes::Attack{ .. }=> {
-            let recovered_content = attack_file(&configuration)
-                .expect("Error attacking ciphered text.");
-            output_result(&recovered_content, &configuration)
-                .expect("Error outputting recovered text.");
+            if let Ok((recovered_content, key)) = attack_file(&configuration) {
+                output_result(&recovered_content, Some(key), &configuration)
+                    .expect("Error outputting recovered text.");
+            } else {
+                panic!("Error attacking ciphered text.");
+            }
         }
     }
 }
@@ -1020,7 +1039,26 @@ mod tests {
                 algorithm: CipheringAlgorithms::Caesar,
                 charset: None,
                 deciphered_file: Some(PathBuf::from("recovered_message.txt")),
-                file_to_attack: PathBuf::from(message_file.path().to_str().unwrap())
+                file_to_attack: PathBuf::from(message_file.path().to_str().unwrap()),
+                output_recovered_key: false
+            }
+        };
+        let recovered_configuration = parse_arguments(&provided_args);
+        assert_eq!(expected_configuration, recovered_configuration);
+    }
+
+    #[test]
+    fn test_parser_attack_caesar_with_recovered_key() {
+        let message_file = TestFile::new();
+        let command = format!("cifra attack caesar {} --deciphered_file recovered_message.txt --output_recovered_key", message_file.path().to_str().unwrap());
+        let provided_args: Vec<&str> = command.split_whitespace().collect();
+        let expected_configuration = Configuration {
+            running_mode: Modes::Attack {
+                algorithm: CipheringAlgorithms::Caesar,
+                charset: None,
+                deciphered_file: Some(PathBuf::from("recovered_message.txt")),
+                file_to_attack: PathBuf::from(message_file.path().to_str().unwrap()),
+                output_recovered_key: true
             }
         };
         let recovered_configuration = parse_arguments(&provided_args);
@@ -1037,7 +1075,8 @@ mod tests {
                 algorithm: CipheringAlgorithms::Caesar,
                 charset: Some(String::from("abcdefghijklmnñopqrstuvwxyz")),
                 deciphered_file: Some(PathBuf::from("recovered_message.txt")),
-                file_to_attack: PathBuf::from(message_file.path().to_str().unwrap())
+                file_to_attack: PathBuf::from(message_file.path().to_str().unwrap()),
+                output_recovered_key: false
             }
         };
         let recovered_configuration = parse_arguments(&provided_args);
@@ -1140,6 +1179,25 @@ mod tests {
         _main(provided_args_vec);
         if let Ok(recovered_content) = read_to_string(&output_file_name){
             assert_eq!(CAESAR_ORIGINAL_MESSAGE, recovered_content)
+        } else {
+            assert!(false);
+        }
+    }
+
+    #[rstest]
+    fn test_attack_caesar_with_recovered_key(temp_dir: TestEnvironment, full_loaded_temp_dictionaries: LoadedDictionaries){
+        let message_file = TestFile::new();
+        write(message_file.path(), CAESAR_CIPHERED_MESSAGE_KEY_13);
+        let output_file_name = temp_dir.path().join("recovered_message.txt");
+        let provided_args = format!("cifra attack caesar {} --deciphered_file {} --output_recovered_key",
+                                    message_file.path().to_str().unwrap(),
+                                    output_file_name.to_str().unwrap());
+        let provided_args_vec: Vec<&str> = provided_args.split_whitespace().collect();
+        _main(provided_args_vec);
+        if let Ok(recovered_content) = read_to_string(&output_file_name){
+            assert_eq!(format!("{{\n  \"guessed_key\":\"{}\"\n  \"recovered_text\":\"{}\"\n}}",
+                               CAESAR_TEST_KEY.to_string(),
+                               CAESAR_ORIGINAL_MESSAGE), recovered_content)
         } else {
             assert!(false);
         }

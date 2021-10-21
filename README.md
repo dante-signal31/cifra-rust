@@ -125,6 +125,8 @@ Attack a ciphered text to get its plain text.
     + -o OUTPUT_CIPHERED_FILE, --ciphered_file OUTPUT_CIPHERED_FILE:
       Path to output file to place deciphered text. If not
       used then deciphered text will be dumped to console.
+    + -k, --output_recovered_key:
+      Include guessed key in output. If not used only recovered text is output.
     + -c CHARSET, --charset CHARSET:
       Default charset is: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefgh
       ijklmnopqrstuvwxyz1234567890 !?., but you can set here

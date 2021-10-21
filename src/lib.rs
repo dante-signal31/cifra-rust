@@ -40,6 +40,10 @@ error_chain! {
                 description("Error reading/writing file.")
                 display("Error reading/writing {} file.", file)
             }
+            FolderError(folder: String){
+                description("Error creating folder.")
+                display("Error creating folder: {}", folder)
+            }
             KeyError(key: String, message: String){
                 description("Error with given key.")
                 display("Problem with key {}:\n{}", key, message)
