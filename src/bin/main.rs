@@ -222,6 +222,7 @@ impl From<ArgMatches> for Configuration {
                 }
             }
         } else {
+            // TODO: An error is thrown if you call cifra with no arguments, when help should be displayed instead.
             let _matches = matches.subcommand_matches("attack").unwrap();
             return Configuration {
                 running_mode: Modes::Attack {
