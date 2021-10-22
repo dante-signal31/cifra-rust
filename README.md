@@ -1,5 +1,6 @@
 % cifra(1) | cifra usage documentation
 
+[![Crate](https://img.shields.io/crates/v/cifra-rust.svg)](https://crates.io/crates/cifra)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/dante-signal31/cifra-rust)](https://github.com/dante-signal31/cifra-rust)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Travis (.org)](https://img.shields.io/travis/dante-signal31/cifra-rust)](https://travis-ci.com/dante-signal31/cifra-rust)
