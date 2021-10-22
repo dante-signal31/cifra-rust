@@ -44,6 +44,6 @@ extended-description = "Console command to crypt and decrypt texts using classic
 section = "utils"
 priority = "optional"
 assets = [
-    ["target/release/cifra", "usr/bin/", "755"],
-    ["README.md", "usr/share/doc/cifra/", "644"],
-    ["man/cifra.1.gz", "usr/share/man/man1/", "644"],]
+    ["target/release/cifra", "/usr/bin/", "755"],
+    ["README.md", "/usr/share/doc/cifra/", "644"],
+    ["man/cifra.1.gz", "/usr/share/man/man1/", "644"],]
