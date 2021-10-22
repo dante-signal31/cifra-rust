@@ -41,7 +41,6 @@ float-cmp = "0.8.0"
 
 [package.metadata.deb]
 extended-description = "Console command to crypt and decrypt texts using classic methods. It also performs crypto attacks against those methods."
-conflicts = "cifra"
 section = "utils"
 priority = "optional"
 assets = [
