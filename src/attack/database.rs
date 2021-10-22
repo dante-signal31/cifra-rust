@@ -3,6 +3,7 @@ use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use dotenv::dotenv;
 use std::env;
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::path::{Path, PathBuf};
 // use std::env::VarError;
@@ -19,7 +20,43 @@ embed_migrations!("migrations/");
 pub type DatabaseSession = SqliteConnection;
 
 pub const DATABASE_ENV_VAR: &'static str = "DATABASE_URL";
-const DATABASE_STANDARD_PATH: &'static str = "~/.cifra/cifra_database.sqlite";
+// const DATABASE_STANDARD_PATH: &'static str = ".cifra/cifra_database.sqlite";
+// Database is going to be stored in this path that is relative to user home folder.
+const DATABASE_STANDARD_RELATIVE_PATH: &'static str = ".cifra/cifra_database.sqlite";
+
+/// This type provides a dynamically built path to database folder.
+///
+/// Just create an instance of this type and use it whenever a PathBuf, String or OsString with
+/// database path is expected. This type will automatically convert to those three types.
+struct DATABASE_STANDARD_PATH;
+
+impl DATABASE_STANDARD_PATH{
+    fn get_database_standard_path()-> PathBuf{
+        let mut path: PathBuf = dirs::home_dir().expect("No home user found to place database file.");
+        path.push(PathBuf::from(DATABASE_STANDARD_RELATIVE_PATH));
+        path
+    }
+}
+
+impl From<DATABASE_STANDARD_PATH> for String {
+    fn from(_: DATABASE_STANDARD_PATH) -> Self {
+        let path = DATABASE_STANDARD_PATH::get_database_standard_path();
+        String::from(path.to_str().unwrap())
+    }
+}
+
+impl From<DATABASE_STANDARD_PATH> for PathBuf {
+    fn from(_: DATABASE_STANDARD_PATH) -> Self {
+        DATABASE_STANDARD_PATH::get_database_standard_path()
+    }
+}
+
+impl From<DATABASE_STANDARD_PATH> for OsString {
+    fn from(_: DATABASE_STANDARD_PATH) -> Self {
+        let path = DATABASE_STANDARD_PATH::get_database_standard_path();
+        path.into_os_string()
+    }
+}
 
 /// Check if DATABASE_URL environment variable actually exists and create it if not.
 ///
@@ -84,7 +121,8 @@ impl Database {
             })
         } else {
             // Database does not exists yet. So we must create it.
-            env::set_var(DATABASE_ENV_VAR, DATABASE_STANDARD_PATH);
+            let database_path: OsString = DATABASE_STANDARD_PATH.into();
+            env::set_var(DATABASE_ENV_VAR, database_path.as_os_str());
             let database_path = PathBuf::from(DATABASE_STANDARD_PATH);
             let database_folder = database_path.parent()
                 .chain_err(|| ErrorKind::FolderError(String::from(database_path.as_os_str().to_str().unwrap())))?;
@@ -174,6 +212,13 @@ mod tests {
         assert!(!database_folder.exists());
         create_folder_path(database_folder);
         assert!(database_folder.exists());
+    }
+
+    #[test]
+    fn test_database_standard_path() {
+        let mut expected_database_folder = dirs::home_dir().unwrap();
+        expected_database_folder.push(DATABASE_STANDARD_RELATIVE_PATH);
+        assert_eq!(expected_database_folder.into_os_string(), OsString::from(DATABASE_STANDARD_PATH));
     }
 
 
