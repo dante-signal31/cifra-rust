@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::env::args;
 use std::fmt::{Display, Formatter};
-use clap::{Arg, App, ArgMatches};
+use clap::{Arg, App, ArgMatches, AppSettings};
 use error_chain::bail;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
@@ -278,6 +278,8 @@ fn parse_arguments(arg_vec: &Vec<&str>) -> Configuration {
         .version(get_version().as_str())
         .author(env!("CARGO_PKG_AUTHORS"))
         .long_about(env!("CARGO_PKG_DESCRIPTION"))
+        // Don't allow an empty command call (command with no args).
+        .setting(AppSettings::ArgRequiredElseHelp)
         .subcommand(App::new("dictionary")
                         .about("Manage dictionaries to perform crypto attacks.")
                         .subcommand(App::new("create")
