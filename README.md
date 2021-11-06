@@ -1,9 +1,9 @@
 % cifra(1) | cifra usage documentation
 
-[![Crate](https://img.shields.io/crates/v/cifra-rust.svg)](https://crates.io/crates/cifra)
+[![Crate](https://img.shields.io/crates/v/cifra.svg)](https://crates.io/crates/cifra)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/dante-signal31/cifra-rust)](https://github.com/dante-signal31/cifra-rust)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![Travis (.org)](https://img.shields.io/travis/dante-signal31/cifra-rust)](https://travis-ci.com/dante-signal31/cifra-rust)
+[![Tests Actions Status](https://github.com/dante-signal31/cifra-rust/actions/workflows/test_and_deploy/badge.svg)](https://github.com/dante-signal31/cifra-rust/actions)
 [![GitHub issues](https://img.shields.io/github/issues/dante-signal31/cifra-rust)](https://github.com/dante-signal31/cifra-rust/issues)
 [![GitHub commit activity](https://img.shields.io/github/commit-activity/y/dante-signal31/cifra-rust)](https://github.com/dante-signal31/cifra-rust/commits/master)
 [![GitHub last commit](https://img.shields.io/github/last-commit/dante-signal31/cifra-rust)](https://github.com/dante-signal31/cifra-rust/commits/master)
@@ -144,6 +144,9 @@ Currently these algorithms are available:
 
 # BUGS
 Report issues at: <https://github.com/dante-signal31/cifra-rust/issues>
+
+# INSTALLATION
+To install Cifra refer to its installation instructions: <https://github.com/dante-signal31/cifra/wiki/Installation>
 
 # AUTHOR
 Dante Signal31 <dante.signal31@gmail.com>
