@@ -43,7 +43,7 @@ jobs:
         shell: bash
         run: |
           export PACKAGE_VERSION=$(./ci_scripts/get_version.py)
-          export PACKAGE_TAG=v$PACKAGE_VERSION
+          export PACKAGE_TAG="v$PACKAGE_VERSION"
           echo "::set-output name=package_tag::${PACKAGE_TAG}"
      outputs:
        package_version: ${{ steps.version_tag.outputs.package_version }}
