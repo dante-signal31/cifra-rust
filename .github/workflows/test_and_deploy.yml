@@ -14,7 +14,7 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # Run test to check application is ready to be packaged and if so build it for release.
-  test:
+  tests:
     runs-on: ubuntu-latest
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -50,7 +50,7 @@ jobs:
   # If push is cleanly tested then marge with master branch.
   merge_staging_and_master:
     runs-on: ubuntu-latest
-    needs: test
+    needs: tests
     steps:
       - uses: actions/checkout@v2
       
@@ -65,7 +65,7 @@ jobs:
   # If tests are OK publish library in crates.io.
   deploy_crates_io:
     runs-on: ubuntu-latest
-    needs: test
+    needs: tests
     steps:
       - uses: actions/checkout@v2
       
@@ -87,7 +87,7 @@ jobs:
   # If tests are OK generate a debian package.
   generate_deb_package:
     runs-on: ubuntu-latest
-    needs: test
+    needs: tests
     steps:
       - uses: actions/checkout@v2
       
