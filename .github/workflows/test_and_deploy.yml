@@ -14,7 +14,7 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # Run test to check application is ready to be packaged and if so build it for release.
-  test:
+  tests:
     runs-on: ubuntu-latest
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -38,16 +38,19 @@ jobs:
           command: test
           args: -- --test-threads 1
 
-      - name: Ass tests passed, get package version and tag.
+      - name: As tests passed, get package version and tag.
+        id: version_tag
         shell: bash
         run: |
-          echo "PACKAGE_VERSION=$(./ci_scripts/get_version.py)" >> $GITHUB_ENV
-          echo "PACKAGE_TAG=v$PACKAGE_VERSION" >> GITHUB_ENV
+          export PACKAGE_VERSION=$(./ci_scripts/get_version.py)
+          echo "::set-output name=package_tag::v${PACKAGE_VERSION}"
+    outputs:
+      package_tag: ${{ steps.version_tag.outputs.package_tag }}
   
   # If push is cleanly tested then marge with master branch.
   merge_staging_and_master:
     runs-on: ubuntu-latest
-    needs: test
+    needs: tests
     steps:
       - uses: actions/checkout@v2
       
@@ -62,7 +65,7 @@ jobs:
   # If tests are OK publish library in crates.io.
   deploy_crates_io:
     runs-on: ubuntu-latest
-    needs: test
+    needs: tests
     steps:
       - uses: actions/checkout@v2
       
@@ -84,7 +87,7 @@ jobs:
   # If tests are OK generate a debian package.
   generate_deb_package:
     runs-on: ubuntu-latest
-    needs: test
+    needs: tests
     steps:
       - uses: actions/checkout@v2
       
@@ -125,7 +128,7 @@ jobs:
   # Upload generated package to PackageCloud repository.
   deploy_debian_package:
     runs-on: ubuntu-latest
-    needs: generate_deb_package
+    needs: [generate_deb_package, tests]
     steps:
       - name: Retrieve generated debian package.
         uses: actions/download-artifact@v2.0.10
@@ -151,5 +154,5 @@ jobs:
         with:
           artifacts: ${{env.DEB_PACKAGE}}
           token: ${{secrets.GITHUB_TOKEN}}
-          tag: ${{env.PACKAGE_TAG}}
+          tag: ${{needs.tests.outputs.package_tag}}
 
