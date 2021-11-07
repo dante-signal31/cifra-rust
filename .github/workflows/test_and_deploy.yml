@@ -103,7 +103,7 @@ jobs:
       - name: Generate man page to include in debian package.
         shell: bash
         run: |
-          ./md2man.sh
+          ./ci_scripts/md2man.sh
           
       - name: Generate debian package.
         uses: actions-rs/cargo@v1.0.1
@@ -130,6 +130,12 @@ jobs:
         shell: bash
         run: |
           echo "DEB_PACKAGE=$(ls *.deb)" >> $GITHUB_ENV
+
+      - name: Get package version and tag.
+        shell: bash
+        run: |
+          echo "PACKAGE_VERSION=$(./ci_scripts/get_version.py)" >> $GITHUB_ENV
+          echo "PACKAGE_TAG=v$PACKAGE_VERSION" >> GITHUB_ENV
           
       - name: Upload package to PackageCloud.io.
         uses: danielmundi/upload-packagecloud@v1
@@ -145,3 +151,5 @@ jobs:
         with:
           artifacts: ${{env.DEB_PACKAGE}}
           token: ${{secrets.GITHUB_TOKEN}}
+          tag: ${{env.PACKAGE_TAG}}
+
