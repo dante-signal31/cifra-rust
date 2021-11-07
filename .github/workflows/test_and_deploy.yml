@@ -28,7 +28,9 @@ jobs:
           
       - name: Add smart cache to rust.
         uses: Swatinem/rust-cache@v1
-        
+
+        # Cifra needs sqlite so we should install it before running tests. Actually we don't because
+        # GitHub ubuntu runner includes it by default.
       - name: Test app.
         uses: actions-rs/cargo@v1.0.1
         with:
@@ -62,6 +64,7 @@ jobs:
         uses: actions-rs/toolchain@v1.0.6
         with:
           toolchain: nightly
+          override: true
           
       - name: Add smart cache to rust.
         uses: Swatinem/rust-cache@v1
@@ -83,6 +86,7 @@ jobs:
         uses: actions-rs/toolchain@v1.0.6
         with:
           toolchain: nightly
+          override: true
           
       - name: Add smart cache to rust.
         uses: Swatinem/rust-cache@v1
