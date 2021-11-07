@@ -37,6 +37,12 @@ jobs:
           # Use test-threads 1 to not parallelize tests. You cannot parallelize tests because of database collisions with multiple tests running at once. 
           command: test
           args: -- --test-threads 1
+
+      - name: Ass tests passed, get package version and tag.
+        shell: bash
+        run: |
+          echo "PACKAGE_VERSION=$(./ci_scripts/get_version.py)" >> $GITHUB_ENV
+          echo "PACKAGE_TAG=v$PACKAGE_VERSION" >> GITHUB_ENV
   
   # If push is cleanly tested then marge with master branch.
   merge_staging_and_master:
@@ -131,12 +137,6 @@ jobs:
         run: |
           echo "DEB_PACKAGE=$(ls *.deb)" >> $GITHUB_ENV
 
-      - name: Get package version and tag.
-        shell: bash
-        run: |
-          echo "PACKAGE_VERSION=$(./ci_scripts/get_version.py)" >> $GITHUB_ENV
-          echo "PACKAGE_TAG=v$PACKAGE_VERSION" >> GITHUB_ENV
-          
       - name: Upload package to PackageCloud.io.
         uses: danielmundi/upload-packagecloud@v1
         with:
@@ -145,7 +145,7 @@ jobs:
           packagecloud-repo: cifra-rust
           packagecloud-distrib: ubuntu/focal
           packagecloud-token: ${{secrets.PACKAGECLOUD_TOKEN}}
-        
+
       - name: Upload to GitHub releases.
         uses: ncipollo/release-action@v1
         with:
