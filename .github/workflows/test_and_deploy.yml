@@ -38,11 +38,17 @@ jobs:
           command: test
           args: -- --test-threads 1
 
-      - name: Ass tests passed, get package version and tag.
+      - name: As tests passed, get package version and tag.
+        id: version_tag
         shell: bash
         run: |
-          echo "PACKAGE_VERSION=$(./ci_scripts/get_version.py)" >> $GITHUB_ENV
-          echo "PACKAGE_TAG=v$PACKAGE_VERSION" >> GITHUB_ENV
+          export PACKAGE_VERSION=$(./ci_scripts/get_version.py)
+          export PACKAGE_TAG=v$PACKAGE_VERSION
+          echo "::set-output name=package_version::${PACKAGE_VERSION}"
+          echo "::set-output name=package_tag::${PACKAGE_TAG}"
+     outputs:
+       package_version: ${{ steps.version_tag.outputs.package_version }}
+       package_tag: ${{ steps.version_tag.outputs.package_tag }}
   
   # If push is cleanly tested then marge with master branch.
   merge_staging_and_master:
@@ -125,7 +131,7 @@ jobs:
   # Upload generated package to PackageCloud repository.
   deploy_debian_package:
     runs-on: ubuntu-latest
-    needs: generate_deb_package
+    needs: [generate_deb_package, tests]
     steps:
       - name: Retrieve generated debian package.
         uses: actions/download-artifact@v2.0.10
@@ -151,5 +157,5 @@ jobs:
         with:
           artifacts: ${{env.DEB_PACKAGE}}
           token: ${{secrets.GITHUB_TOKEN}}
-          tag: ${{env.PACKAGE_TAG}}
+          tag: ${{needs.tests.outputs.package_tag}}
 
