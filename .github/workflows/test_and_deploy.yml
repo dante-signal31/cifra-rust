@@ -24,6 +24,7 @@ jobs:
         uses: actions-rs/toolchain@v1.0.6
         with:
           toolchain: nightly
+          override: true
           
       - name: Add smart cache to rust.
         uses: Swatinem/rust-cache@v1
