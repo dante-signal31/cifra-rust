@@ -96,8 +96,11 @@ jobs:
         with:
           command: install
           args: cargo-deb
+
+      - name: Install Pandoc to generate man page.
+        uses: r-lib/actions/setup-pandoc@v1
       
-      - name: Generate man page.
+      - name: Generate man page to include in debian package.
         shell: bash
         run: |
           ./md2man.sh
