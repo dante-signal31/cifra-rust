@@ -32,7 +32,8 @@ jobs:
         uses: actions-rs/cargo@v1.0.1
         with:
           # Use test-threads 1 to not parallelize tests. You cannot parallelize tests because of database collisions with multiple tests running at once. 
-          command: test --test-threads 1
+          command: test
+          args: --test-threads 1
   
   # If push is cleanly tested then marge with master branch.
   merge_staging_and_master:
@@ -67,7 +68,8 @@ jobs:
       - name: Publish to crates.io.
         uses: actions-rs/cargo@v1.0.1
         with:
-          command: publish --token ${{secrets.CRATES_IO_TOKEN}}
+          command: publish
+          args: --token ${{secrets.CRATES_IO_TOKEN}}
   
   # If tests are OK generate a debian package.
   generate_deb_package:
@@ -87,7 +89,8 @@ jobs:
       - name: Install cargo deb.
         uses: actions-rs/cargo@v1.0.1
         with:
-          command: install cargo-deb
+          command: install
+          args: cargo-deb
       
       - name: Generate man page.
         shell: bash
