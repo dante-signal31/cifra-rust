@@ -46,7 +46,6 @@ jobs:
           export PACKAGE_TAG="v$PACKAGE_VERSION"
           echo "::set-output name=package_tag::${PACKAGE_TAG}"
      outputs:
-       package_version: ${{ steps.version_tag.outputs.package_version }}
        package_tag: ${{ steps.version_tag.outputs.package_tag }}
   
   # If push is cleanly tested then marge with master branch.
