@@ -3,7 +3,7 @@
 [![Crate](https://img.shields.io/crates/v/cifra.svg)](https://crates.io/crates/cifra)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/dante-signal31/cifra-rust)](https://github.com/dante-signal31/cifra-rust)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/dante-signal31/cifra-rust/test_and_deploy)
+![GitHub Workflow Status (branch)](https://img.shields.io/github/workflow/status/dante-signal31/cifra-rust/test_and_deploy/staging)
 [![GitHub issues](https://img.shields.io/github/issues/dante-signal31/cifra-rust)](https://github.com/dante-signal31/cifra-rust/issues)
 [![GitHub commit activity](https://img.shields.io/github/commit-activity/y/dante-signal31/cifra-rust)](https://github.com/dante-signal31/cifra-rust/commits/master)
 [![GitHub last commit](https://img.shields.io/github/last-commit/dante-signal31/cifra-rust)](https://github.com/dante-signal31/cifra-rust/commits/master)
