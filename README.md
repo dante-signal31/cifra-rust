@@ -7,6 +7,9 @@
 [![GitHub issues](https://img.shields.io/github/issues/dante-signal31/cifra-rust)](https://github.com/dante-signal31/cifra-rust/issues)
 [![GitHub commit activity](https://img.shields.io/github/commit-activity/y/dante-signal31/cifra-rust)](https://github.com/dante-signal31/cifra-rust/commits/master)
 [![GitHub last commit](https://img.shields.io/github/last-commit/dante-signal31/cifra-rust)](https://github.com/dante-signal31/cifra-rust/commits/master)
+![Debian repository](https://img.shields.io/badge/deb-packagecloud.io-844fec.svg)
+
+
 
 # NAME
 **cifra** — Library and console command to crypt and decrypt texts using classic methods.
@@ -153,6 +156,9 @@ Dante Signal31 <dante.signal31@gmail.com>
 
 # SEE ALSO
 Website: <https://github.com/dante-signal31/cifra-rust>
+
+# SUPPORTERS
+<a href="https://packagecloud.io/"><img height="46" width="158" alt="Private NPM registry and Maven, RPM, DEB, PyPi and RubyGem Repository · packagecloud" src="https://packagecloud.io/images/packagecloud-badge.png" /></a>
 
 # COPYRIGHT
 Copyright (c) 2021 Dante-Signal31 <dante.signal31@gmail.com>. All rights reserved.
