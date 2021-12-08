@@ -106,13 +106,21 @@ jobs:
           command: install
           args: cargo-deb
 
-      - name: Install Pandoc to generate man page.
-        uses: r-lib/actions/setup-pandoc@v1
-      
+#      - name: Install Pandoc to generate man page.
+#        uses: r-lib/actions/setup-pandoc@v1
+#
+#      - name: Generate man page to include in debian package.
+#        shell: bash
+#        run: |
+#          ./ci_scripts/md2man.sh
+
       - name: Generate man page to include in debian package.
-        shell: bash
-        run: |
-          ./ci_scripts/md2man.sh
+        uses: dante-signal31/markdown2man@1.0.0
+        with:
+          markdown_file: README.md
+          manpage_name: cifra
+          manpage_section: 1
+          manpage_folder: man/
           
       - name: Generate debian package.
         uses: actions-rs/cargo@v1.0.1
