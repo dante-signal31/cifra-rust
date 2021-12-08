@@ -115,7 +115,7 @@ jobs:
 #          ./ci_scripts/md2man.sh
 
       - name: Generate man page to include in debian package.
-        uses: dante-signal31/markdown2man@1.0.0
+        uses: dante-signal31/markdown2man@v1.0.0
         with:
           markdown_file: README.md
           manpage_name: cifra
