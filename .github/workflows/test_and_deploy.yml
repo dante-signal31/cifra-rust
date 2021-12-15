@@ -40,12 +40,10 @@ jobs:
 
       - name: As tests passed, get package version and tag.
         id: version_tag
-        shell: bash
-        run: |
-          export PACKAGE_VERSION=$(./ci_scripts/get_version.py)
-          echo "::set-output name=package_tag::v${PACKAGE_VERSION}"
+        uses: dante-signal31/rust-app-version@v1.0.0
+
     outputs:
-      package_tag: ${{ steps.version_tag.outputs.package_tag }}
+      package_tag: ${{ steps.version_tag.outputs.app_version }}
   
   # If push is cleanly tested then marge with master branch.
   merge_staging_and_master:
@@ -105,14 +103,6 @@ jobs:
         with:
           command: install
           args: cargo-deb
-
-#      - name: Install Pandoc to generate man page.
-#        uses: r-lib/actions/setup-pandoc@v1
-#
-#      - name: Generate man page to include in debian package.
-#        shell: bash
-#        run: |
-#          ./ci_scripts/md2man.sh
 
       - name: Generate man page to include in debian package.
         uses: dante-signal31/markdown2man@v1.0.0

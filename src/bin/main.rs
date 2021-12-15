@@ -2,21 +2,21 @@ extern crate cifra;
 
 use std::collections::HashSet;
 use std::convert::TryFrom;
+use std::env::args;
+use std::fmt::{Display, Formatter};
 use std::fs::{read_to_string, write};
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::env::args;
-use std::fmt::{Display, Formatter};
-use clap::{Arg, App, ArgMatches, AppSettings};
+
+use clap::{App, AppSettings, Arg, ArgMatches};
 use error_chain::bail;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
+
 use cifra::{ErrorKind, Result, ResultExt};
+use cifra::attack::dictionaries::Dictionary;
 use cifra::cipher::common::DEFAULT_CHARSET;
 use cifra::cipher::substitution::DEFAULT_CHARSET as SUBSTITUTION_DEFAULT_CHARSET;
-use cifra::attack::dictionaries::Dictionary;
-
-
 
 /// Get an string containing current app version.
 ///
@@ -273,6 +273,7 @@ fn file_exists(path: &str)-> std::result::Result<(), String>{
 fn parse_arguments(arg_vec: &Vec<&str>) -> Configuration {
     let algorithm_options = CipheringAlgorithms::get_all_possible_values();
     let algorithm_options_str: Vec<&str> = algorithm_options.iter().map(|str| str.as_str()).collect();
+    let charset_message = &format!("Default charset is: {}, but you can set here another", DEFAULT_CHARSET);
     let matches = App::new("cifra")
         .version(get_version().as_str())
         .author(env!("CARGO_PKG_AUTHORS"))
@@ -347,7 +348,7 @@ fn parse_arguments(arg_vec: &Vec<&str>) -> Configuration {
                 .short('c')
                 .value_name("CHARSET")
                 .takes_value(true)
-                .help(&format!("Default charset is: {}, but you can set here another", DEFAULT_CHARSET))))
+                .help(charset_message.as_str())))
         .subcommand(App::new("decipher")
             .about("Decipher a text using a key.")
             .arg(Arg::new("algorithm").index(1)
@@ -378,7 +379,7 @@ fn parse_arguments(arg_vec: &Vec<&str>) -> Configuration {
                 .short('c')
                 .value_name("CHARSET")
                 .takes_value(true)
-                .help(&format!("Default charset is: {}, but you can set here another", DEFAULT_CHARSET))))
+                .help(charset_message.as_str())))
         .subcommand(App::new("attack")
             .about("Attack a ciphered text to get its plain text")
             .arg(Arg::new("algorithm").index(1)
@@ -408,7 +409,7 @@ fn parse_arguments(arg_vec: &Vec<&str>) -> Configuration {
                 .long("charset")
                 .value_name("CHARSET")
                 .takes_value(true)
-                .help(&format!("Default charset is: {}, but you can set here another", DEFAULT_CHARSET))))
+                .help(charset_message.as_str())))
         .get_matches_from(arg_vec);
     let configuration = Configuration::from(matches);
     configuration
@@ -817,17 +818,18 @@ fn main() {
 mod tests {
     extern crate cifra;
 
-    use rstest::*;
-    use std::fs::create_dir;
     use std::env;
-    use super::*;
+    use std::fs::create_dir;
 
-    use test_common::fs::tmp::{TestEnvironment, TestFile};
+    use rstest::*;
     use test_common::fs::ops::copy_files;
+    use test_common::fs::tmp::{TestEnvironment, TestFile};
     use test_common::system::env::TemporalEnvironmentVariable;
 
     use cifra::attack::database;
     use cifra::cipher::substitution;
+
+    use super::*;
 
     const CAESAR_ORIGINAL_MESSAGE: &str = "This is my secret message.";
     const CAESAR_CIPHERED_MESSAGE_KEY_13: &str = "guv6Jv6Jz!J6rp5r7Jzr66ntrM";
