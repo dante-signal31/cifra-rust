@@ -2,21 +2,21 @@ extern crate cifra;
 
 use std::collections::HashSet;
 use std::convert::TryFrom;
+use std::env::args;
+use std::fmt::{Display, Formatter};
 use std::fs::{read_to_string, write};
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::env::args;
-use std::fmt::{Display, Formatter};
-use clap::{Arg, App, ArgMatches, AppSettings};
+
+use clap::{App, AppSettings, Arg, ArgMatches};
 use error_chain::bail;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
+
 use cifra::{ErrorKind, Result, ResultExt};
+use cifra::attack::dictionaries::Dictionary;
 use cifra::cipher::common::DEFAULT_CHARSET;
 use cifra::cipher::substitution::DEFAULT_CHARSET as SUBSTITUTION_DEFAULT_CHARSET;
-use cifra::attack::dictionaries::Dictionary;
-
-
 
 /// Get an string containing current app version.
 ///
@@ -287,34 +287,34 @@ fn parse_arguments(arg_vec: &Vec<&str>) -> Configuration {
                                 .required(true)
                                 .value_name("NEW_DICTIONARY_NAME")
                                 .takes_value(true)
-                                .help("Name for the dictionary to create."))
+                                .about("Name for the dictionary to create."))
                             .arg(Arg::new("initial_words_file")
                                 .long("initial_words_file")
                                 .short('i')
                                 .value_name("PATH_TO FILE_WITH_WORDS")
                                 .takes_value(true)
                                 .validator(file_exists)
-                                .help("Optionally you can load in the dictionary words located in a text file")))
+                                .about("Optionally you can load in the dictionary words located in a text file")))
                         .subcommand(App::new("delete")
                             .about("Remove an existing dictionary.")
                             .arg(Arg::new("dictionary_name").index(1)
                                 .required(true)
                                 .value_name("DICTIONARY_NAME_TO_DELETE")
                                 .takes_value(true)
-                                .help("Name for the dictionary to delete.")))
+                                .about("Name for the dictionary to delete.")))
                         .subcommand(App::new("update")
                             .about("Add words to an existing dictionary.")
                             .arg(Arg::new("dictionary_name").index(1)
                                 .required(true)
                                 .value_name("DICTIONARY_NAME_TO_UPDATE")
                                 .takes_value(true)
-                                .help("Name for the dictionary to update with additional words."))
+                                .about("Name for the dictionary to update with additional words."))
                             .arg(Arg::new("words_file").index(2)
                                 .required(true)
                                 .value_name("PATH_TO_FILE_WITH_WORDS")
                                 .takes_value(true)
                                 .validator(file_exists)
-                                .help("Pathname to a file with words to add to dictionary")))
+                                .about("Pathname to a file with words to add to dictionary")))
                         .subcommand(App::new("list")
                             .about("Show existing dictionaries.")))
         .subcommand(App::new("cipher")
@@ -324,30 +324,30 @@ fn parse_arguments(arg_vec: &Vec<&str>) -> Configuration {
                 .value_name("ALGORITHM_NAME")
                 .takes_value(true)
                 .possible_values(algorithm_options_str.as_slice())
-                .help("Algorithm to use to cipher."))
+                .about("Algorithm to use to cipher."))
             .arg(Arg::new("key").index(2)
                 .required(true)
                 .value_name("CIPHERING_KEY")
                 .takes_value(true)
-                .help("Key to use to cipher."))
+                .about("Key to use to cipher."))
             .arg(Arg::new("file_to_cipher").index(3)
                 .required(true)
                 .value_name("FILE_TO_CIPHER")
                 .takes_value(true)
                 .validator(file_exists)
-                .help("Path to file with text to cipher."))
+                .about("Path to file with text to cipher."))
             .arg(Arg::new("ciphered_file")
                 .long("ciphered_file")
                 .short('o')
                 .value_name("OUTPUT_CIPHERED_FILE")
                 .takes_value(true)
-                .help("Path to output file to place ciphered text. If not used then ciphered text will be dumped to console."))
+                .about("Path to output file to place ciphered text. If not used then ciphered text will be dumped to console."))
             .arg(Arg::new("charset")
                 .long("charset")
                 .short('c')
                 .value_name("CHARSET")
                 .takes_value(true)
-                .help(&format!("Default charset is: {}, but you can set here another", DEFAULT_CHARSET))))
+                .about(&format!("Default charset is: {}, but you can set here another", DEFAULT_CHARSET))))
         .subcommand(App::new("decipher")
             .about("Decipher a text using a key.")
             .arg(Arg::new("algorithm").index(1)
@@ -355,30 +355,30 @@ fn parse_arguments(arg_vec: &Vec<&str>) -> Configuration {
                 .value_name("ALGORITHM_NAME")
                 .takes_value(true)
                 .possible_values(algorithm_options_str.as_slice())
-                .help("Algorithm to use to decipher."))
+                .about("Algorithm to use to decipher."))
             .arg(Arg::new("key").index(2)
                 .required(true)
                 .value_name("CIPHERING_KEY")
                 .takes_value(true)
-                .help("Key to use to decipher."))
+                .about("Key to use to decipher."))
             .arg(Arg::new("file_to_decipher").index(3)
                 .required(true)
                 .value_name("FILE_TO_DECIPHER")
                 .takes_value(true)
                 .validator(file_exists)
-                .help("Path to file with text to decipher."))
+                .about("Path to file with text to decipher."))
             .arg(Arg::new("deciphered_file")
                 .long("deciphered_file")
                 .short('o')
                 .value_name("OUTPUT_DECIPHERED_FILE")
                 .takes_value(true)
-                .help("Path to output file to place deciphered text. If not used then deciphered text will be dumped to console."))
+                .about("Path to output file to place deciphered text. If not used then deciphered text will be dumped to console."))
             .arg(Arg::new("charset")
                 .long("charset")
                 .short('c')
                 .value_name("CHARSET")
                 .takes_value(true)
-                .help(&format!("Default charset is: {}, but you can set here another", DEFAULT_CHARSET))))
+                .about(&format!("Default charset is: {}, but you can set here another", DEFAULT_CHARSET))))
         .subcommand(App::new("attack")
             .about("Attack a ciphered text to get its plain text")
             .arg(Arg::new("algorithm").index(1)
@@ -386,29 +386,29 @@ fn parse_arguments(arg_vec: &Vec<&str>) -> Configuration {
                 .value_name("ALGORITHM_NAME")
                 .takes_value(true)
                 .possible_values(algorithm_options_str.as_slice())
-                .help("Algorithm to attack."))
+                .about("Algorithm to attack."))
             .arg(Arg::new("file_to_attack").index(2)
                 .required(true)
                 .value_name("FILE_TO_ATTACK")
                 .takes_value(true)
                 .validator(file_exists)
-                .help("Path to file with text to attack."))
+                .about("Path to file with text to attack."))
             .arg(Arg::new("deciphered_file")
                 .short('o')
                 .long("deciphered_file")
                 .value_name("OUTPUT_DECIPHERED_FILE")
                 .takes_value(true)
-                .help("Path to output file to place deciphered text. If not used then deciphered text will be dumped to console."))
+                .about("Path to output file to place deciphered text. If not used then deciphered text will be dumped to console."))
             .arg(Arg::new("output_recovered_key")
                 .short('k')
                 .long("output_recovered_key")
-                .help("Include guessed key in output. If not used only recovered text is output."))
+                .about("Include guessed key in output. If not used only recovered text is output."))
             .arg(Arg::new("charset")
                 .short('c')
                 .long("charset")
                 .value_name("CHARSET")
                 .takes_value(true)
-                .help(&format!("Default charset is: {}, but you can set here another", DEFAULT_CHARSET))))
+                .about(&format!("Default charset is: {}, but you can set here another", DEFAULT_CHARSET))))
         .get_matches_from(arg_vec);
     let configuration = Configuration::from(matches);
     configuration
@@ -817,17 +817,18 @@ fn main() {
 mod tests {
     extern crate cifra;
 
-    use rstest::*;
-    use std::fs::create_dir;
     use std::env;
-    use super::*;
+    use std::fs::create_dir;
 
-    use test_common::fs::tmp::{TestEnvironment, TestFile};
+    use rstest::*;
     use test_common::fs::ops::copy_files;
+    use test_common::fs::tmp::{TestEnvironment, TestFile};
     use test_common::system::env::TemporalEnvironmentVariable;
 
     use cifra::attack::database;
     use cifra::cipher::substitution;
+
+    use super::*;
 
     const CAESAR_ORIGINAL_MESSAGE: &str = "This is my secret message.";
     const CAESAR_CIPHERED_MESSAGE_KEY_13: &str = "guv6Jv6Jz!J6rp5r7Jzr66ntrM";
